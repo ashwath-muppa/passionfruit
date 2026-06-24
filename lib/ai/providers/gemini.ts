@@ -82,10 +82,31 @@ export const geminiProvider: ModelProvider = {
   },
 
   async embed(model: string, text: string): Promise<number[]> {
-    const client = makeClient();
-    const embedModel = client.getGenerativeModel({ model });
-    const result = await embedModel.embedContent(text);
-    return result.embedding.values;
+    // Called via REST so we can pin outputDimensionality to match the pgvector
+    // column width (gemini-embedding-001 defaults to 3072, which exceeds the
+    // pgvector HNSW 2000-dim index limit). Cosine ops don't require normalized
+    // vectors, so reduced dimensions are safe for our recall.
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${encodeURIComponent(aiEnv.apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: { parts: [{ text }] },
+          outputDimensionality: aiEnv.embeddingDimensions,
+        }),
+      },
+    );
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(`Gemini embedContent failed (${res.status}): ${detail.slice(0, 300)}`);
+    }
+    const data = (await res.json()) as { embedding?: { values?: number[] } };
+    const values = data.embedding?.values;
+    if (!values || values.length === 0) {
+      throw new Error("Gemini embedContent returned no embedding values.");
+    }
+    return values;
   },
 };
 

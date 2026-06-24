@@ -8,7 +8,6 @@
 // Run: npm run seed   (loads .env.local via node --env-file)
 
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import postgres from "postgres";
@@ -33,7 +32,8 @@ const DATABASE_URL = process.env.DATABASE_URL!;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL ?? "text-embedding-004";
+const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL ?? "gemini-embedding-001";
+const EMBEDDING_DIMENSIONS = Number(process.env.EMBEDDING_DIMENSIONS ?? "768");
 
 if (!DATABASE_URL || !SUPABASE_URL || !SERVICE_ROLE) {
   throw new Error(
@@ -51,14 +51,24 @@ const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE, {
 const keyLooksReal =
   GEMINI_API_KEY.length > 0 && !GEMINI_API_KEY.startsWith("placeholder") && GEMINI_API_KEY !== "your-gemini-api-key";
 let embeddingsDisabled = !keyLooksReal;
-const genAI = keyLooksReal ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 async function embed(text: string): Promise<number[] | null> {
-  if (embeddingsDisabled || !genAI) return null;
+  if (embeddingsDisabled) return null;
   try {
-    const model = genAI.getGenerativeModel({ model: EMBEDDING_MODEL });
-    const res = await model.embedContent(text);
-    return res.embedding.values;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: { parts: [{ text }] },
+          outputDimensionality: EMBEDDING_DIMENSIONS,
+        }),
+      },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data = (await res.json()) as { embedding?: { values?: number[] } };
+    return data.embedding?.values ?? null;
   } catch (err) {
     if (!embeddingsDisabled) {
       console.warn(`  ⚠ Embeddings disabled (${(err as Error).message}). Seeding without vectors.`);

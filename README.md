@@ -32,6 +32,11 @@ content is written to an **escalation queue**.
 - **AI gateway** (`lib/ai/`): provider-agnostic, **Gemini** wired by default.
   Models swap via env (`FAST_MODEL`, `QUALITY_MODEL`, `EMBEDDING_MODEL`).
 
+The env defaults (`gemini-2.5-flash-lite` / `gemini-2.5-flash` /
+`gemini-embedding-001` at 768 dims) run on a **free-tier** AI Studio key. With a
+billed key you can bump `QUALITY_MODEL=gemini-2.5-pro` for richer mentor voice —
+no code change.
+
 ## Prerequisites
 
 - Node 20+ and npm

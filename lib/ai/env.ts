@@ -22,14 +22,19 @@ export const aiEnv = {
   },
   /** Cheap/fast model: parsing, classification, opportunity-matching. */
   get fastModel() {
-    return process.env.FAST_MODEL ?? "gemini-2.0-flash";
+    return process.env.FAST_MODEL ?? "gemini-2.5-flash-lite";
   },
   /** Quality model: anything a kid or parent actually reads (mentor voice). */
   get qualityModel() {
-    return process.env.QUALITY_MODEL ?? "gemini-2.5-pro";
+    return process.env.QUALITY_MODEL ?? "gemini-2.5-flash";
   },
   get embeddingModel() {
-    return process.env.EMBEDDING_MODEL ?? "text-embedding-004";
+    return process.env.EMBEDDING_MODEL ?? "gemini-embedding-001";
+  },
+  /** Embedding width requested from the provider. MUST match the pgvector
+   *  column width in the schema (vector(768)). */
+  get embeddingDimensions() {
+    return Number(process.env.EMBEDDING_DIMENSIONS ?? "768");
   },
 };
 
