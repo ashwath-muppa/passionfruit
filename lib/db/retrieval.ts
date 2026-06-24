@@ -4,7 +4,7 @@
 // memory.
 
 import "server-only";
-import { and, cosineDistance, eq, gt, sql } from "drizzle-orm";
+import { and, cosineDistance, desc, eq, gt, sql, type SQL } from "drizzle-orm";
 import { db } from "./client";
 import {
   artifacts,
@@ -51,47 +51,55 @@ export async function semanticRecall(
   const minSimilarity = opts.minSimilarity ?? 0.3;
 
   const queryEmbedding = await embedText(queryText);
-
   // similarity = 1 - cosine distance
-  const sim = (col: Parameters<typeof cosineDistance>[0]) =>
+  const simOf = (col: Parameters<typeof cosineDistance>[0]): SQL<number> =>
     sql<number>`1 - (${cosineDistance(col, queryEmbedding)})`;
+
+  const interestSim = simOf(interests.embedding);
+  const strengthSim = simOf(strengths.embedding);
+  const goalSim = simOf(goals.embedding);
+  const obsSim = simOf(observations.embedding);
+  const artifactSim = simOf(artifacts.embedding);
 
   const [int, str, gl, obs, art] = await Promise.all([
     db
-      .select({ id: interests.id, text: interests.label, similarity: sim(interests.embedding) })
+      .select({ id: interests.id, text: interests.label, similarity: interestSim })
       .from(interests)
-      .where(and(eq(interests.studentId, studentId), gt(sim(interests.embedding), minSimilarity)))
-      .orderBy((t) => sql`${t.similarity} desc`)
+      .where(and(eq(interests.studentId, studentId), gt(interestSim, minSimilarity)))
+      .orderBy(desc(interestSim))
       .limit(perSource),
     db
-      .select({ id: strengths.id, text: strengths.label, similarity: sim(strengths.embedding) })
+      .select({ id: strengths.id, text: strengths.label, similarity: strengthSim })
       .from(strengths)
-      .where(and(eq(strengths.studentId, studentId), gt(sim(strengths.embedding), minSimilarity)))
-      .orderBy((t) => sql`${t.similarity} desc`)
+      .where(and(eq(strengths.studentId, studentId), gt(strengthSim, minSimilarity)))
+      .orderBy(desc(strengthSim))
       .limit(perSource),
     db
-      .select({ id: goals.id, text: goals.text, similarity: sim(goals.embedding) })
+      .select({ id: goals.id, text: goals.text, similarity: goalSim })
       .from(goals)
-      .where(and(eq(goals.studentId, studentId), gt(sim(goals.embedding), minSimilarity)))
-      .orderBy((t) => sql`${t.similarity} desc`)
+      .where(and(eq(goals.studentId, studentId), gt(goalSim, minSimilarity)))
+      .orderBy(desc(goalSim))
       .limit(perSource),
     db
-      .select({ id: observations.id, text: observations.content, similarity: sim(observations.embedding) })
+      .select({ id: observations.id, text: observations.content, similarity: obsSim })
       .from(observations)
-      .where(and(eq(observations.studentId, studentId), gt(sim(observations.embedding), minSimilarity)))
-      .orderBy((t) => sql`${t.similarity} desc`)
+      .where(and(eq(observations.studentId, studentId), gt(obsSim, minSimilarity)))
+      .orderBy(desc(obsSim))
       .limit(perSource),
     // Artifacts join through projects to scope by student.
     db
-      .select({ id: artifacts.id, text: artifacts.title, similarity: sim(artifacts.embedding) })
+      .select({ id: artifacts.id, text: artifacts.title, similarity: artifactSim })
       .from(artifacts)
       .innerJoin(projects, eq(artifacts.projectId, projects.id))
-      .where(and(eq(projects.studentId, studentId), gt(sim(artifacts.embedding), minSimilarity)))
-      .orderBy((t) => sql`${t.similarity} desc`)
+      .where(and(eq(projects.studentId, studentId), gt(artifactSim, minSimilarity)))
+      .orderBy(desc(artifactSim))
       .limit(perSource),
   ]);
 
-  const tag = (rows: { id: string; text: string; similarity: number }[], source: RecallSource) =>
+  const tag = (
+    rows: { id: string; text: string; similarity: number }[],
+    source: RecallSource,
+  ): RecallItem[] =>
     rows.map((r) => ({ source, id: r.id, text: r.text, similarity: Number(r.similarity) }));
 
   return [

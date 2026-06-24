@@ -69,6 +69,12 @@ export interface ModerationResult {
   reason: string;
 }
 
+/** A turn in the intake conversation. */
+export interface ChatMessage {
+  role: "mentor" | "student";
+  text: string;
+}
+
 export interface ParentSummary {
   headline: string;
   body: string;
