@@ -19,10 +19,7 @@ import {
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
-import type {
-  ProjectPathCandidate,
-  ModerationResult,
-} from "@/lib/types";
+import type { ProjectPathCandidate, ModerationResult } from "../types";
 
 // Embedding width. MUST match EMBEDDING_MODEL output (Gemini text-embedding-004
 // = 768). Changing this requires a migration (pgvector columns are fixed-width).

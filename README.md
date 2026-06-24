@@ -64,8 +64,25 @@ npm run dev
 # open http://localhost:3000
 ```
 
-Sign in with a seeded parent (printed by the seed script) or create a new
-account at `/signup`.
+### Demo login
+
+The seed creates one parent account holding three students (Maya — soccer +
+stats, Leo — game dev + art, Priya — climate + biology), each with a
+pre-populated learner graph so you can jump straight to **See project paths**:
+
+```
+email:    demo.parent@example.com
+password: password123
+```
+
+Or create a fresh account at `/signup` and walk the whole flow from intake.
+
+> The seed embeds the graph for semantic recall only if a real `GEMINI_API_KEY`
+> is set when you run it. Without one it seeds structured data and skips
+> vectors — set the key and re-run `npm run seed` to backfill embeddings.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the schema and the seams
+where deferred features plug in.
 
 ## Project layout
 
