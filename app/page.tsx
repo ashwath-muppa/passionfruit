@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-16">
       <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-600">
-        Next in Research
+        Passionfruit
       </p>
       <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
         A persistent AI mentor for ambitious middle-schoolers.

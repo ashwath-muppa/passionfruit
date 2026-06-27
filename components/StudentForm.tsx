@@ -77,7 +77,7 @@ export function StudentForm() {
         />
         <span className="text-slate-700">
           I am this child&apos;s parent or legal guardian and I consent to their use of
-          Next in Research.
+          Passionfruit.
           {under13 && (
             <strong className="block text-amber-700">
               Required for children under 13 (COPPA).

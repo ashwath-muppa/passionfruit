@@ -190,7 +190,7 @@ async function ensureParentAuthUser(): Promise<string> {
 }
 
 async function main() {
-  console.log("Seeding Next in Research demo data…");
+  console.log("Seeding Passionfruit demo data…");
   if (embeddingsDisabled) {
     console.log("  ℹ No real GEMINI_API_KEY — seeding without embeddings (set one and reseed for semantic recall).");
   }

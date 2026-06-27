@@ -24,9 +24,11 @@ export const aiEnv = {
   get fastModel() {
     return process.env.FAST_MODEL ?? "gemini-2.5-flash-lite";
   },
-  /** Quality model: anything a kid or parent actually reads (mentor voice). */
+  /** Quality model: anything a kid or parent actually reads (mentor voice).
+   *  Defaulted to flash-lite for fast, free-tier-friendly testing; bump to
+   *  gemini-2.5-flash / gemini-2.5-pro for richer voice via env. */
   get qualityModel() {
-    return process.env.QUALITY_MODEL ?? "gemini-2.5-flash";
+    return process.env.QUALITY_MODEL ?? "gemini-2.5-flash-lite";
   },
   get embeddingModel() {
     return process.env.EMBEDDING_MODEL ?? "gemini-embedding-001";

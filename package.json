@@ -1,8 +1,8 @@
 {
-  "name": "next-in-research",
+  "name": "passionfruit",
   "version": "0.1.0",
   "private": true,
-  "description": "Next in Research — a persistent AI mentor that turns a middle-schooler's interests into portfolio-worthy projects, with a longitudinal learner graph.",
+  "description": "Passionfruit — a persistent AI mentor that turns a middle-schooler's interests into portfolio-worthy projects, with a longitudinal learner graph.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

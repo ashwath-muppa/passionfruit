@@ -5,7 +5,7 @@ export function AppHeader({ parentEmail }: { parentEmail: string }) {
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         <Link href="/dashboard" className="font-bold text-brand-700">
-          Next in Research
+          Passionfruit
         </Link>
         <div className="flex items-center gap-3 text-sm text-slate-500">
           <span className="hidden sm:inline">{parentEmail}</span>

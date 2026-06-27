@@ -1,5 +1,5 @@
 -- ──────────────────────────────────────────────────────────────────────────
--- Next in Research — initial schema: the learner graph.
+-- Passionfruit — initial schema: the learner graph.
 -- Mirrors lib/db/schema.ts. Enables pgvector, wires the auth.users FK, and
 -- creates HNSW cosine indexes for semantic recall.
 -- ──────────────────────────────────────────────────────────────────────────

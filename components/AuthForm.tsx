@@ -44,7 +44,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   return (
     <div className="mx-auto mt-20 max-w-md px-6">
       <Link href="/" className="text-sm font-semibold text-brand-600">
-        ← Next in Research
+        ← Passionfruit
       </Link>
       <div className="card mt-4">
         <h1 className="text-2xl font-bold">
