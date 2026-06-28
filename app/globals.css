@@ -2,34 +2,104 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Passionfruit — Direction A · Warm Paper. Tokens mirror docs/DESIGN.md §3. */
 :root {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --paper: #fbf6ee;
+  --card: #ffffff;
+  --paper-sunk: #f4ede2;
+  --line: #efe5d6;
+  --line-soft: #ebdfcf;
+
+  --ink: #2c2420;
+  --ink-body: #3a2d27;
+  --ink-muted: #6f6258;
+  --ink-faint: #a0917f;
+
+  --accent: #e8694a;
+  --accent-deep: #d4533a;
+  --accent-ink: #c2492c;
+  --accent-wash: #fce9e0;
+  --accent-line: #f4d9cc;
+
+  --gold: #f2b23e;
+  --berry: #d87ba0;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background: var(--paper);
+  color: var(--ink-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@keyframes pf-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 @layer components {
+  /* ── Surfaces ── */
   .card {
-    @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-sm;
+    @apply rounded-card border border-passionfruit-line bg-passionfruit-card p-[17px];
   }
+  .card-sheet {
+    @apply card rounded-sheet shadow-sheet;
+  }
+
+  /* ── Typography helpers ── */
+  .font-display {
+    font-family: var(--font-display), Georgia, serif;
+  }
+  .eyebrow {
+    @apply font-sans text-[10px] font-bold uppercase tracking-[1px] text-passionfruit-faint;
+  }
+  .meta {
+    @apply font-sans text-[11px] font-medium text-passionfruit-faint;
+  }
+  .mentor-voice {
+    font-family: var(--font-display), Georgia, serif;
+    @apply text-[18px] leading-[1.42] text-passionfruit-body;
+  }
+
+  /* ── Buttons ── */
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn text-white shadow-[0_12px_24px_-12px_rgba(212,83,58,.6)];
+    background: linear-gradient(150deg, var(--accent), var(--accent-deep));
+  }
+  .btn-primary:hover {
+    filter: brightness(1.03);
   }
   .btn-ghost {
-    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+    @apply btn border border-passionfruit-line bg-passionfruit-card text-passionfruit-muted hover:bg-passionfruit-sunk;
   }
+  .btn-soft {
+    @apply btn bg-passionfruit-sunk text-passionfruit-muted hover:brightness-[.98];
+  }
+
+  /* ── Form ── */
   .input {
-    @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-2xl border border-passionfruit-line bg-passionfruit-card px-3.5 py-2.5 text-sm text-passionfruit-ink outline-none transition placeholder:text-passionfruit-faint focus:border-passionfruit-accent focus:ring-4 focus:ring-passionfruit-wash;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-slate-700;
+    @apply mb-1.5 block text-[11px] font-bold uppercase tracking-[1px] text-passionfruit-faint;
   }
+
+  /* ── Chips / pills ── */
   .pill {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-full bg-passionfruit-sunk px-2.5 py-1 text-[11px] font-medium text-passionfruit-muted;
+  }
+  .pill-accent {
+    @apply inline-flex items-center rounded-full bg-passionfruit-wash px-2.5 py-1 text-[11px] font-bold text-passionfruit-accentInk;
+  }
+  .chip-eyebrow {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.8px];
   }
 }

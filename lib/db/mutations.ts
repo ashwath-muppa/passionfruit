@@ -13,6 +13,7 @@ import {
   observations,
   projectPaths,
   projects,
+  skills,
   strengths,
 } from "./schema";
 import { embedText } from "@/lib/ai/gateway";
@@ -99,6 +100,41 @@ export async function applyIntakeExtraction(
       embedding,
     });
   }
+}
+
+/**
+ * Persist the Course Builder "spark" result: the skills it surfaced (upserted
+ * by label as nascent, low-progress entries) plus an append-only observation.
+ * Lightweight, deterministic enrichment of the graph ahead of path matching.
+ */
+export async function applySparkSkills(
+  studentId: string,
+  found: { label: string; category: string }[],
+): Promise<void> {
+  for (const s of found) {
+    const [existing] = await db
+      .select()
+      .from(skills)
+      .where(and(eq(skills.studentId, studentId), eq(skills.label, s.label)))
+      .limit(1);
+    if (!existing) {
+      await db.insert(skills).values({
+        studentId,
+        label: s.label,
+        category: s.category,
+        progress: 0.15,
+      });
+    }
+  }
+
+  const labels = found.map((s) => s.label).join(", ");
+  await db.insert(observations).values({
+    studentId,
+    type: "spark_session",
+    content: `Spark quiz surfaced: ${labels || "(no selections)"}.`,
+    source: "reflection",
+    payload: { skills: found },
+  });
 }
 
 /** Persist the generated 2–3 path options as a snapshot. */

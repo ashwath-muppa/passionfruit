@@ -43,7 +43,7 @@ export function StudentForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card mt-6 space-y-4">
+    <form onSubmit={onSubmit} className="card-sheet mt-6 space-y-4 p-6">
       <div>
         <label className="label" htmlFor="name">Student&apos;s name</label>
         <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -68,25 +68,29 @@ export function StudentForm() {
         </div>
       </div>
 
-      <label className="flex items-start gap-3 rounded-lg bg-slate-50 p-3 text-sm">
+      <label className="flex items-start gap-3 rounded-2xl bg-passionfruit-sunk p-3.5 text-[13px]">
         <input
           type="checkbox"
-          className="mt-0.5"
+          className="mt-0.5 accent-passionfruit-accent"
           checked={consent}
           onChange={(e) => setConsent(e.target.checked)}
         />
-        <span className="text-slate-700">
+        <span className="text-passionfruit-body">
           I am this child&apos;s parent or legal guardian and I consent to their use of
           Passionfruit.
           {under13 && (
-            <strong className="block text-amber-700">
+            <strong className="block text-passionfruit-accentInk">
               Required for children under 13 (COPPA).
             </strong>
           )}
         </span>
       </label>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p className="rounded-2xl bg-passionfruit-wash px-3 py-2 text-[13px] text-passionfruit-accentInk">
+          {error}
+        </p>
+      )}
 
       <button type="submit" className="btn-primary w-full" disabled={loading}>
         {loading ? "Creating…" : "Create profile & start intake"}

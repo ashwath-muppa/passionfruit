@@ -62,6 +62,12 @@ export const milestoneStatus = pgEnum("milestone_status", [
   "doing",
   "done",
 ]);
+// "Up next" surface on the parent dashboard (DESIGN.md §7c).
+export const opportunityKind = pgEnum("opportunity_kind", [
+  "check_in",
+  "window",
+  "deadline",
+]);
 export const aiTask = pgEnum("ai_task", [
   "intake",
   "match_paths",
@@ -200,6 +206,39 @@ export const milestones = pgTable("milestones", {
   detail: text("detail"),
   status: milestoneStatus("status").notNull().default("todo"),
   dueHint: text("due_hint"),
+  // Presentation metadata for the timeline surfaces (DESIGN.md §7b/§7d). All
+  // nullable: AI-generated plans leave these null and the UI derives sensible
+  // defaults; the seed populates them for a design-accurate demo.
+  kind: text("kind"), // deliverable type eyebrow, e.g. "Course", "Dataset"
+  source: text("source"), // resource line, e.g. "Coursera", "38 matches"
+  icon: text("icon"), // emoji marker
+  coach: text("coach"), // mentor coaching note (shown on the current week)
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── Skills planner (parent dashboard): categorical progress bars. ──
+// Distinct from `strengths` (qualitative evidence); skills carry a measurable
+// progress and a domain category that maps to a stable hue in the UI.
+export const skills = pgTable("skills", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  category: text("category").notNull(), // domain; mapped to a hue in the UI
+  progress: real("progress").notNull().default(0), // 0..1
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── "Up next": mentor check-ins and opportunity windows. ──
+export const opportunities = pgTable("opportunities", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  kind: opportunityKind("kind").notNull(),
+  title: text("title").notNull(),
+  whenHint: text("when_hint"), // soft schedule, e.g. "Thu 4pm"
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -261,6 +300,8 @@ export type Observation = typeof observations.$inferSelect;
 export type ProjectPathRow = typeof projectPaths.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
+export type Skill = typeof skills.$inferSelect;
+export type Opportunity = typeof opportunities.$inferSelect;
 export type Artifact = typeof artifacts.$inferSelect;
 export type AiInteraction = typeof aiInteractions.$inferSelect;
 export type SafetyFlag = typeof safetyFlags.$inferSelect;

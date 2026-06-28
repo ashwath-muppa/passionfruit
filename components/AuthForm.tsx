@@ -43,14 +43,14 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
 
   return (
     <div className="mx-auto mt-20 max-w-md px-6">
-      <Link href="/" className="text-sm font-semibold text-brand-600">
-        ← Passionfruit
+      <Link href="/" className="flex items-center gap-2 text-[13px] font-semibold text-passionfruit-muted">
+        <span className="h-[18px] w-[18px] rounded-[6px] bg-passionfruit-accent" /> ← Passionfruit
       </Link>
-      <div className="card mt-4">
-        <h1 className="text-2xl font-bold">
+      <div className="card-sheet mt-4 p-6">
+        <h1 className="font-display text-[26px] font-semibold text-passionfruit-ink">
           {isSignup ? "Create your parent account" : "Welcome back"}
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-[13px] text-passionfruit-muted">
           {isSignup
             ? "You're the account holder. You'll add your child's profile next."
             : "Log in to your parent account."}
@@ -94,7 +94,9 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            <p className="rounded-2xl bg-passionfruit-wash px-3 py-2 text-[13px] text-passionfruit-accentInk">
+              {error}
+            </p>
           )}
 
           <button type="submit" className="btn-primary w-full" disabled={loading}>
@@ -102,11 +104,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-slate-500">
+        <p className="mt-4 text-center text-[13px] text-passionfruit-muted">
           {isSignup ? (
-            <>Already have an account? <Link href="/login" className="text-brand-600">Log in</Link></>
+            <>Already have an account? <Link href="/login" className="font-semibold text-passionfruit-accentInk">Log in</Link></>
           ) : (
-            <>New here? <Link href="/signup" className="text-brand-600">Create an account</Link></>
+            <>New here? <Link href="/signup" className="font-semibold text-passionfruit-accentInk">Create an account</Link></>
           )}
         </p>
       </div>

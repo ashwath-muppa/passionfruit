@@ -10,7 +10,9 @@ import {
   interests,
   milestones,
   observations,
+  opportunities,
   projects,
+  skills,
   strengths,
   students,
 } from "./schema";
@@ -19,7 +21,9 @@ import type {
   Goal,
   Interest,
   Milestone,
+  Opportunity,
   Project,
+  Skill,
   Strength,
   Student,
 } from "./schema";
@@ -91,4 +95,22 @@ export async function getActiveProject(
     .orderBy(milestones.weekNo);
 
   return { project, milestones: steps };
+}
+
+/** Skills planner rows (categorical progress bars), strongest first. */
+export async function getSkills(studentId: string): Promise<Skill[]> {
+  return db
+    .select()
+    .from(skills)
+    .where(eq(skills.studentId, studentId))
+    .orderBy(desc(skills.progress));
+}
+
+/** "Up next" items: mentor check-ins and opportunity windows. */
+export async function getOpportunities(studentId: string): Promise<Opportunity[]> {
+  return db
+    .select()
+    .from(opportunities)
+    .where(eq(opportunities.studentId, studentId))
+    .orderBy(opportunities.createdAt);
 }
