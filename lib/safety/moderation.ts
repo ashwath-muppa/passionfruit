@@ -19,6 +19,20 @@ const moderationSchema = z.object({
   reason: z.string(),
 });
 
+// Constrained-decoding schema mirroring moderationSchema. Forces a structurally
+// valid verdict (notably the severity enum), so a malformed classifier reply
+// can't slip past JSON.parse and trip the fail-safe path unnecessarily.
+const moderationResponseSchema: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    flagged: { type: "boolean" },
+    severity: { type: "string", enum: ["low", "medium", "high"] },
+    categories: { type: "array", items: { type: "string" } },
+    reason: { type: "string" },
+  },
+  required: ["flagged", "severity", "categories", "reason"],
+};
+
 export interface ModerationContext {
   direction: "input" | "output";
   studentId?: string | null;
@@ -44,6 +58,7 @@ export async function moderateContent(
       user: moderationUser(ctx.direction, content),
       temperature: 0,
       maxOutputTokens: 512,
+      jsonSchema: moderationResponseSchema,
     });
     result = moderationSchema.parse(JSON.parse(raw));
   } catch (err) {
