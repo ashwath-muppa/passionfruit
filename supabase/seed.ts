@@ -19,6 +19,7 @@ import {
   deliverables,
   goals,
   interests,
+  mentors,
   milestones,
   observations,
   opportunities,
@@ -404,6 +405,31 @@ const PROFILES: Profile[] = [
   },
 ];
 
+// Mentor pool (#9) — global, capped human layer (TJ / top-college students).
+const MENTORS = [
+  {
+    name: "Aisha Rahman",
+    email: "aisha.rahman@mentors.passionfruit.app",
+    field: "Data science",
+    bio: "Ran a sports-analytics club and placed at a regional science fair with a soccer-stats project. Loves helping students turn a pile of numbers into one clear, honest claim.",
+    credential: "TJHSST '26",
+  },
+  {
+    name: "Marcus Lee",
+    email: "marcus.lee@mentors.passionfruit.app",
+    field: "Game design & creative coding",
+    bio: "Shipped two small indie games in high school and now studies CS. Big on finishing things — he'll push for a real playable build, not a pile of half-started ideas.",
+    credential: "MIT '27",
+  },
+  {
+    name: "Priyanka Nair",
+    email: "priyanka.nair@mentors.passionfruit.app",
+    field: "Environmental science",
+    bio: "Led a community water-quality study that turned into a published local report. Helps students aim at real, credible targets and find their voice presenting the work.",
+    credential: "Stanford '27",
+  },
+];
+
 async function ensureParentAuthUser(): Promise<string> {
   const created = await supabaseAdmin.auth.admin.createUser({
     email: DEMO_PARENT.email,
@@ -440,6 +466,12 @@ async function main() {
 
   // Ingest the vetted deliverables catalog (global; before students so targets resolve).
   await ingestDeliverables();
+
+  // Mentor pool (#9) — global, idempotent: clear + reinsert (no natural unique key).
+  // Safe because checkpoints.mentorId is ON DELETE SET NULL.
+  await db.delete(mentors);
+  await db.insert(mentors).values(MENTORS);
+  console.log(`  ✓ ${MENTORS.length} mentors seeded`);
 
   // Clean reseed: remove this parent's existing students (cascades the graph).
   await db.delete(students).where(eq(students.parentId, parentId));

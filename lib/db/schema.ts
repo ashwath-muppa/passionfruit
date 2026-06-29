@@ -133,6 +133,14 @@ export const resourceKind = pgEnum("resource_kind", [
 export const weeklyFocusStatus = pgEnum("weekly_focus_status", ["open", "celebrated"]);
 export const digestKind = pgEnum("digest_kind", ["monthly", "weekly"]);
 
+// Mentor checkpoints (#9) — the capped human layer.
+export const checkpointStatus = pgEnum("checkpoint_status", [
+  "requested",
+  "scheduled",
+  "completed",
+  "cancelled",
+]);
+
 // ── Accounts: parent is the account holder (COPPA / parent-mediated). ──
 export const parents = pgTable("parents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -163,6 +171,8 @@ export const students = pgTable("students", {
   goalNote: text("goal_note"),
   // Activation sprint (#6): when the student hit their first tangible win.
   firstWinAt: timestamp("first_win_at", { withTimezone: true }),
+  // Plan tier — gates the mentor-checkpoint cap (#9). Billing plugs in here later.
+  tier: text("tier").notNull().default("core"), // core | plus
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -422,15 +432,49 @@ export const digests = pgTable("digests", {
   sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Mentor pool (#9): the human half. TJ / top-college students, recruited
+//    ahead of demand. Capped checkpoints protect the software margin. ──
+export const mentors = pgTable("mentors", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  email: text("email"),
+  field: text("field"), // their domain, e.g. "Data science"
+  bio: text("bio"),
+  credential: text("credential"), // e.g. "TJHSST '26"
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── Checkpoints (#9): capped human check-ins (2/term Core, 4/term Plus). The cap
+//    is enforced in code — it is the margin guardrail. ──
+export const checkpoints = pgTable("checkpoints", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  mentorId: uuid("mentor_id").references(() => mentors.id, { onDelete: "set null" }),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  status: checkpointStatus("status").notNull().default("requested"),
+  term: text("term").notNull(), // e.g. "2026-fall" — the cap counts per term
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Artifacts: outputs / reflections. Metadata + text only for now. ──
 export const artifacts = pgTable("artifacts", {
   id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
+  // Nullable so a portfolio upload can exist without a project (#5).
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  // Direct owner link for the portfolio + share surfaces (#5).
+  studentId: uuid("student_id").references(() => students.id, { onDelete: "cascade" }),
   kind: text("kind").notNull(),
   title: text("title").notNull(),
   text: text("text"),
+  // Uploaded file (Supabase Storage): public URL + mime; slug for the share link.
+  url: text("url"),
+  mimeType: text("mime_type"),
+  slug: text("slug").unique(),
+  shared: boolean("shared").notNull().default(false),
   meta: jsonb("meta").$type<Record<string, unknown>>(),
   embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -489,6 +533,8 @@ export type Streak = typeof streaks.$inferSelect;
 export type Badge = typeof badges.$inferSelect;
 export type WeeklyFocus = typeof weeklyFocus.$inferSelect;
 export type Digest = typeof digests.$inferSelect;
+export type Mentor = typeof mentors.$inferSelect;
+export type Checkpoint = typeof checkpoints.$inferSelect;
 export type Artifact = typeof artifacts.$inferSelect;
 export type AiInteraction = typeof aiInteractions.$inferSelect;
 export type SafetyFlag = typeof safetyFlags.$inferSelect;
