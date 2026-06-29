@@ -1,13 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
-import { getActiveProject, getLearnerGraphSnapshot } from "@/lib/db/queries";
+import {
+  getActiveProject,
+  getLearnerGraphSnapshot,
+  getOpportunities,
+  getSkills,
+} from "@/lib/db/queries";
 import { AppHeader } from "@/components/AppHeader";
-import { MilestoneList } from "@/components/MilestoneList";
+import { LearnerGraph } from "@/components/LearnerGraph";
+import { SkillsPlanner } from "@/components/SkillsPlanner";
 import { ParentSummaryCard } from "@/components/ParentSummaryCard";
+import { ProjectTimelineRail } from "@/components/ProjectTimelineRail";
+import { UpNext } from "@/components/UpNext";
+import { StudentAvatar } from "@/components/StudentAvatar";
 import { PATH_TYPE_LABELS } from "@/lib/types";
+import { projectProgress } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 export default async function StudentDashboard({
   params,
@@ -19,164 +34,157 @@ export default async function StudentDashboard({
   const student = await getOwnedStudent(id);
   if (!student) notFound();
 
-  const [graph, project] = await Promise.all([
+  const [graph, project, skills, opportunities] = await Promise.all([
     getLearnerGraphSnapshot(id),
     getActiveProject(id),
+    getSkills(id),
+    getOpportunities(id),
   ]);
 
+  const firstName = student.name.split(" ")[0] ?? student.name;
   const hasGraph = !!graph && graph.interests.length > 0;
+  const period = `${MONTHS[new Date().getMonth()]} summary`;
+  const prog = project ? projectProgress(project.milestones) : null;
 
   return (
     <div className="min-h-screen">
       <AppHeader parentEmail={parent.email} />
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        <Link href="/dashboard" className="text-sm text-brand-600">← All students</Link>
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        <Link href="/dashboard" className="text-[13px] font-semibold text-passionfruit-muted">
+          ← All students
+        </Link>
 
-        {/* Profile header */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">{student.name}</h1>
-            <p className="text-sm text-slate-500">
-              {[student.age ? `Age ${student.age}` : null, student.grade ? `Grade ${student.grade}` : null]
-                .filter(Boolean)
-                .join(" · ")}
-              {student.under13 && " · Under 13"}
-              {" · "}
-              {student.parentalConsent ? (
-                <span className="text-green-700">Consent on file</span>
-              ) : (
-                <span className="text-amber-700">No consent</span>
-              )}
-            </p>
+        {/* Dashboard sheet */}
+        <div className="mt-3 rounded-[24px] border border-passionfruit-line bg-passionfruit-paper p-5 shadow-frame sm:p-[22px]">
+          {/* header */}
+          <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="h-6 w-6 rounded-[7px] bg-passionfruit-accent" />
+              <span className="font-display text-[20px] font-semibold text-passionfruit-ink">Passionfruit</span>
+              <span className="ml-1 border-l border-passionfruit-line pl-2.5 text-[12px] text-passionfruit-faint">
+                Parent view
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-full border border-passionfruit-line bg-passionfruit-card py-1.5 pl-1.5 pr-3.5"
+              >
+                <StudentAvatar name={student.name} size={26} />
+                <span className="text-[13px] font-bold text-passionfruit-ink">
+                  {firstName}
+                  {student.grade ? ` · Grade ${student.grade}` : ""}
+                </span>
+                <span className="text-passionfruit-faint">▾</span>
+              </Link>
+              <span className="hidden text-[12px] text-passionfruit-faint sm:inline">{period}</span>
+            </div>
           </div>
-          {!project && (
-            <Link
-              href={hasGraph ? `/students/${id}/paths` : `/students/${id}/intake`}
-              className="btn-primary"
-            >
-              {hasGraph ? "See project paths" : "Start intake"}
-            </Link>
-          )}
-        </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          {/* Left: project + progress */}
-          <div className="space-y-6 lg:col-span-2">
-            {project ? (
-              <div className="card">
-                <div className="flex items-center justify-between">
-                  <span className="pill bg-brand-100 text-brand-800">
-                    {PATH_TYPE_LABELS[project.project.pathType]}
-                  </span>
-                  <span className="pill bg-green-100 text-green-800">{project.project.status}</span>
+          {/* body grid */}
+          <div className="grid gap-4 lg:grid-cols-[296px_1fr]">
+            {/* LEFT */}
+            <div className="flex flex-col gap-4">
+              <SkillsPlanner skills={skills} />
+              <ParentSummaryCard studentId={id} studentFirstName={firstName} />
+              {!hasGraph && (
+                <div className="card text-center">
+                  <p className="text-[13px] text-passionfruit-muted">
+                    Run the intake chat to build {firstName}&apos;s learner graph.
+                  </p>
+                  <Link href={`/students/${id}/intake`} className="btn-primary mt-3 text-xs">
+                    Start intake →
+                  </Link>
                 </div>
-                <h2 className="mt-3 text-xl font-semibold">{project.project.title}</h2>
-                {project.project.summary && (
-                  <p className="mt-1 text-sm text-slate-600">{project.project.summary}</p>
-                )}
-                <hr className="my-4 border-slate-100" />
-                <h3 className="mb-3 text-sm font-semibold text-slate-700">Weekly plan</h3>
-                <MilestoneList initial={project.milestones} />
-              </div>
-            ) : (
-              <div className="card text-center">
-                <p className="text-slate-600">
-                  {hasGraph
-                    ? "Learner graph is ready. Generate project paths to get started."
-                    : "Run the intake chat to build the learner graph."}
-                </p>
-                <Link
-                  href={hasGraph ? `/students/${id}/paths` : `/students/${id}/intake`}
-                  className="btn-primary mt-4"
-                >
-                  {hasGraph ? "See project paths" : "Start intake"}
-                </Link>
-              </div>
-            )}
-
-            <ParentSummaryCard studentId={id} />
-          </div>
-
-          {/* Right: learner graph */}
-          <div className="space-y-4">
-            <div className="card">
-              <h2 className="font-semibold">Learner graph</h2>
-              <p className="text-xs text-slate-400">The persistent memory of who {student.name} is.</p>
-
-              <GraphSection title="Interests">
-                {graph?.interests.length ? (
-                  graph.interests.map((i) => (
-                    <span key={i.id} className="pill bg-brand-50 text-brand-700">
-                      {i.label}
-                    </span>
-                  ))
-                ) : (
-                  <Empty />
-                )}
-              </GraphSection>
-
-              <GraphSection title="Strengths">
-                {graph?.strengths.length ? (
-                  graph.strengths.map((s) => (
-                    <span key={s.id} className="pill bg-slate-100 text-slate-700">{s.label}</span>
-                  ))
-                ) : (
-                  <Empty />
-                )}
-              </GraphSection>
-
-              <GraphSection title="Constraints">
-                {graph?.constraints.length ? (
-                  graph.constraints.map((c) => (
-                    <span key={c.id} className="pill bg-slate-100 text-slate-700">
-                      {c.kind}: {c.value}
-                    </span>
-                  ))
-                ) : (
-                  <Empty />
-                )}
-              </GraphSection>
-
-              <GraphSection title="Goals">
-                {graph?.goals.length ? (
-                  <ul className="space-y-1">
-                    {graph.goals.map((g) => (
-                      <li key={g.id} className="text-sm text-slate-600">• {g.text}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <Empty />
-                )}
-              </GraphSection>
+              )}
             </div>
 
-            {graph && graph.recentObservations.length > 0 && (
-              <div className="card">
-                <h2 className="font-semibold">Recent signals</h2>
-                <p className="text-xs text-slate-400">Longitudinal, append-only memory.</p>
-                <ul className="mt-2 space-y-1">
-                  {graph.recentObservations.slice(0, 6).map((o, i) => (
-                    <li key={i} className="text-sm text-slate-600">• {o.content}</li>
-                  ))}
-                </ul>
+            {/* RIGHT */}
+            <div className="flex flex-col gap-4">
+              {hasGraph ? (
+                <LearnerGraph
+                  studentName={student.name}
+                  interests={graph!.interests}
+                  skills={skills}
+                  projectTitle={project?.project.title ?? null}
+                />
+              ) : (
+                <div className="card flex min-h-[180px] items-center justify-center text-center">
+                  <p className="max-w-xs text-[13px] text-passionfruit-faint">
+                    {firstName}&apos;s learner graph — the living map of interests, skills, and
+                    projects — appears here once intake is done.
+                  </p>
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {project ? (
+                  <ProjectTimelineRail
+                    milestones={project.milestones}
+                    timelineHref={`/students/${id}/timeline`}
+                  />
+                ) : (
+                  <div className="card flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-display text-[15px] font-semibold text-passionfruit-ink">
+                        Project
+                      </h3>
+                      <p className="mt-1 text-[12px] text-passionfruit-muted">
+                        {hasGraph
+                          ? "The learner graph is ready — generate project paths to begin."
+                          : "Finish intake first to unlock project paths."}
+                      </p>
+                    </div>
+                    {hasGraph && (
+                      <div className="mt-3 flex flex-col gap-1.5">
+                        <Link href={`/students/${id}/paths`} className="btn-primary text-xs">
+                          See project paths →
+                        </Link>
+                        <Link
+                          href={`/students/${id}/builder`}
+                          className="text-center text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
+                        >
+                          Or try the spark quiz
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <UpNext opportunities={opportunities} />
               </div>
-            )}
+
+              {project && (
+                <div className="flex flex-wrap items-center gap-2 px-1">
+                  <span className="pill-accent">{PATH_TYPE_LABELS[project.project.pathType]}</span>
+                  <span className="text-[13px] font-semibold text-passionfruit-ink">
+                    {project.project.title}
+                  </span>
+                  {prog && (
+                    <span className="text-[12px] text-passionfruit-faint">· {prog.weekLabel}</span>
+                  )}
+                  <Link
+                    href={`/students/${id}/plan`}
+                    className="ml-auto text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
+                  >
+                    Open weekly plan →
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Consent / safety reassurance strip (DESIGN.md §9) */}
+        <p className="mt-3 px-1 text-[12px] text-passionfruit-faint">
+          {[student.age ? `Age ${student.age}` : null, student.grade ? `Grade ${student.grade}` : null]
+            .filter(Boolean)
+            .join(" · ")}
+          {student.under13 && " · Under 13"}
+          {" · "}
+          {student.parentalConsent ? "Parental consent on file" : "Awaiting parental consent"}
+          {" · every AI moment is safety-checked and logged."}
+        </p>
       </main>
     </div>
   );
-}
-
-function GraphSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="mt-4">
-      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</p>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
-    </div>
-  );
-}
-
-function Empty() {
-  return <span className="text-sm text-slate-400">—</span>;
 }

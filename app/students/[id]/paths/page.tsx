@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
-import { AppHeader } from "@/components/AppHeader";
+import { getLearnerGraphSnapshot } from "@/lib/db/queries";
 import { PathPicker } from "@/components/PathPicker";
+import { PhoneFrame } from "@/components/PhoneFrame";
+import { StudentAvatar } from "@/components/StudentAvatar";
 
 export const dynamic = "force-dynamic";
 
@@ -12,22 +14,31 @@ export default async function PathsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const parent = await requireParent();
+  await requireParent();
   const student = await getOwnedStudent(id);
   if (!student) notFound();
 
+  const graph = await getLearnerGraphSnapshot(id);
+  const spark = graph?.interests[0]?.label.toLowerCase() ?? null;
+
   return (
-    <div className="min-h-screen">
-      <AppHeader parentEmail={parent.email} />
-      <main className="mx-auto max-w-2xl px-6 py-8">
-        <Link href={`/students/${id}`} className="text-sm text-brand-600">← {student.name}</Link>
-        <h1 className="mt-2 text-2xl font-bold">Project paths for {student.name}</h1>
-        <p className="text-sm text-slate-500">
-          Built from {student.name}&apos;s learner graph. Pick one and Sage will
-          break it into weekly steps.
-        </p>
-        <PathPicker studentId={student.id} />
-      </main>
-    </div>
+    <main className="mx-auto min-h-screen max-w-[392px] px-4 py-8">
+      <div className="mb-4 px-1">
+        <Link href={`/students/${id}`} className="text-[13px] font-semibold text-passionfruit-muted">
+          ← {student.name}
+        </Link>
+      </div>
+      <PhoneFrame>
+        {/* brand row */}
+        <div className="flex items-center justify-between px-[22px] pb-1 pt-1.5">
+          <div className="flex items-center gap-2">
+            <div className="h-[22px] w-[22px] rounded-[7px] bg-passionfruit-accent" />
+            <span className="font-display text-[18px] font-semibold text-passionfruit-ink">Passionfruit</span>
+          </div>
+          <StudentAvatar name={student.name} size={34} />
+        </div>
+        <PathPicker studentId={student.id} studentName={student.name} spark={spark} />
+      </PhoneFrame>
+    </main>
   );
 }

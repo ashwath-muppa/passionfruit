@@ -15,8 +15,12 @@ import {
   constraints,
   goals,
   interests,
+  milestones,
   observations,
+  opportunities,
   parents,
+  projects,
+  skills,
   strengths,
   students,
 } from "../lib/db/schema";
@@ -78,6 +82,18 @@ async function embed(text: string): Promise<number[] | null> {
   }
 }
 
+interface SeedMilestone {
+  weekNo: number;
+  title: string;
+  detail: string;
+  status: "todo" | "doing" | "done";
+  kind: string;
+  source: string;
+  icon: string;
+  coach?: string;
+  dueHint?: string;
+}
+
 interface Profile {
   name: string;
   age: number;
@@ -87,6 +103,15 @@ interface Profile {
   constraints: { kind: "time" | "budget" | "location" | "other"; value: string }[];
   goals: { horizon: "short" | "long"; text: string }[];
   observations: string[];
+  skills: { label: string; category: string; progress: number }[];
+  opportunities: { kind: "check_in" | "window" | "deadline"; title: string; whenHint?: string }[];
+  project?: {
+    pathType: "research" | "app" | "sports_analytics" | "creative" | "venture";
+    title: string;
+    summary: string;
+    status: "proposed" | "active" | "done";
+    milestones: SeedMilestone[];
+  };
 }
 
 const PROFILES: Profile[] = [
@@ -116,6 +141,81 @@ const PROFILES: Profile[] = [
       "Lights up when talking about her team's games.",
       "Already tracks her own practice stats by hand.",
     ],
+    skills: [
+      { label: "Python & data", category: "stem", progress: 0.33 },
+      { label: "Sports science", category: "sports", progress: 0.42 },
+      { label: "Storytelling", category: "humanities", progress: 0.25 },
+    ],
+    opportunities: [
+      { kind: "check_in", title: "Mentor check-in", whenHint: "Thu 4pm" },
+      { kind: "window", title: "Science Fair window opens", whenHint: "in 3 weeks" },
+    ],
+    project: {
+      pathType: "sports_analytics",
+      title: "What Makes a Winning Streak?",
+      summary:
+        "Break down the team's season with real stats — the way Maya already watches the game — and turn the numbers into a data story.",
+      status: "active",
+      milestones: [
+        {
+          weekNo: 1,
+          title: "Finish “Intro to Python”",
+          detail: "The foundations — variables, loops, and functions — behind everything that follows.",
+          status: "done",
+          kind: "Course",
+          source: "Coursera",
+          icon: "🐍",
+        },
+        {
+          weekNo: 2,
+          title: "Collect the season data",
+          detail: "Log every match — scores, dates, opponents — into one clean, tidy dataset.",
+          status: "done",
+          kind: "Dataset",
+          source: "38 matches",
+          icon: "📋",
+        },
+        {
+          weekNo: 3,
+          title: "Chart goals-per-game",
+          detail: "Build the first real chart and spot the shape of a streak.",
+          status: "done",
+          kind: "Visualization",
+          source: "Notebook",
+          icon: "📊",
+        },
+        {
+          weekNo: 4,
+          title: "Write the streak analysis",
+          detail: "Turn the numbers into an argument: what actually drives a winning streak, backed by your own data.",
+          status: "doing",
+          kind: "Analysis",
+          source: "Draft",
+          icon: "✍️",
+          coach:
+            "Start with one clear claim, then let the chart back it up. I'll read your first draft with you on Thursday →",
+          dueHint: "by end of week 4",
+        },
+        {
+          weekNo: 6,
+          title: "Build the interactive dashboard",
+          detail: "Package the analysis into a small interactive dashboard your teammates can click through.",
+          status: "todo",
+          kind: "Shipped app",
+          source: "Web app",
+          icon: "🧮",
+        },
+        {
+          weekNo: 8,
+          title: "Publish & share your story",
+          detail: "Ship the finished data story — chart, analysis, and dashboard — and share it with the team.",
+          status: "todo",
+          kind: "Published story",
+          source: "Published",
+          icon: "🏁",
+        },
+      ],
+    },
   },
   {
     name: "Leo",
@@ -143,6 +243,15 @@ const PROFILES: Profile[] = [
       "Sketches characters constantly in a notebook.",
       "Prefers building things over following tutorials.",
     ],
+    skills: [
+      { label: "Game design", category: "technology", progress: 0.38 },
+      { label: "Digital art", category: "creative", progress: 0.55 },
+      { label: "Storytelling", category: "humanities", progress: 0.3 },
+    ],
+    opportunities: [
+      { kind: "check_in", title: "Mentor check-in", whenHint: "Tue 5pm" },
+      { kind: "window", title: "Young Game Makers jam", whenHint: "next month" },
+    ],
   },
   {
     name: "Priya",
@@ -169,6 +278,15 @@ const PROFILES: Profile[] = [
     observations: [
       "Cares deeply about her community.",
       "Comfortable speaking in front of groups.",
+    ],
+    skills: [
+      { label: "Environmental science", category: "stem", progress: 0.48 },
+      { label: "Field biology", category: "biology", progress: 0.4 },
+      { label: "Public speaking", category: "humanities", progress: 0.35 },
+    ],
+    opportunities: [
+      { kind: "check_in", title: "Mentor check-in", whenHint: "Wed 4pm" },
+      { kind: "deadline", title: "Community science grant due", whenHint: "in 5 weeks" },
     ],
   },
 ];
@@ -262,6 +380,49 @@ async function main() {
         source: "intake",
         embedding: await embed(content),
       });
+    }
+    for (const s of p.skills) {
+      await db.insert(skills).values({
+        studentId,
+        label: s.label,
+        category: s.category,
+        progress: s.progress,
+      });
+    }
+    for (const o of p.opportunities) {
+      await db.insert(opportunities).values({
+        studentId,
+        kind: o.kind,
+        title: o.title,
+        whenHint: o.whenHint ?? null,
+      });
+    }
+    if (p.project) {
+      const [project] = await db
+        .insert(projects)
+        .values({
+          studentId,
+          pathType: p.project.pathType,
+          title: p.project.title,
+          summary: p.project.summary,
+          status: p.project.status,
+          chosenAt: new Date(),
+        })
+        .returning();
+      for (const m of p.project.milestones) {
+        await db.insert(milestones).values({
+          projectId: project!.id,
+          weekNo: m.weekNo,
+          title: m.title,
+          detail: m.detail,
+          status: m.status,
+          kind: m.kind,
+          source: m.source,
+          icon: m.icon,
+          coach: m.coach ?? null,
+          dueHint: m.dueHint ?? null,
+        });
+      }
     }
 
     console.log(`  ✓ ${p.name} (age ${p.age}) — graph seeded`);

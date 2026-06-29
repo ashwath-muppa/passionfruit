@@ -52,6 +52,8 @@ interface AuditedCall {
   studentId: string | null;
   maxOutputTokens?: number;
   temperature?: number;
+  /** Response schema for constrained JSON decoding (auditedJSON only). */
+  jsonSchema?: Record<string, unknown>;
 }
 
 /** Shared pipeline: moderate input → generate → audit → moderate output. */
@@ -133,6 +135,7 @@ async function auditedJSON<T>(call: AuditedCall, schema: z.ZodType<T>): Promise<
       user: call.user,
       maxOutputTokens: call.maxOutputTokens,
       temperature: call.temperature ?? 0.4,
+      jsonSchema: call.jsonSchema,
     }),
   );
   return schema.parse(JSON.parse(raw));
@@ -190,6 +193,129 @@ const parentSummarySchema: z.ZodType<ParentSummary> = z.object({
   suggestedActions: z.array(z.string()),
 });
 
+// ── Gemini response schemas (constrained decoding) ──
+// These mirror the Zod schemas above and are passed to the provider so the
+// model emits structurally valid JSON (enums, array bounds, required fields)
+// at decode time. Zod still parses the result as the final backstop. Kept as
+// plain JSON-Schema objects so any provider that supports response schemas can
+// consume them; unsupported providers ignore the field.
+type JsonSchema = Record<string, unknown>;
+const str: JsonSchema = { type: "string" };
+
+const extractionResponseSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    interests: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          label: str,
+          category: str,
+          strength: { type: "number" },
+        },
+        required: ["label", "category", "strength"],
+      },
+    },
+    strengths: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { label: str, evidence: str },
+        required: ["label", "evidence"],
+      },
+    },
+    constraints: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["time", "budget", "location", "other"] },
+          value: str,
+        },
+        required: ["kind", "value"],
+      },
+    },
+    goals: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          horizon: { type: "string", enum: ["short", "long"] },
+          text: str,
+        },
+        required: ["horizon", "text"],
+      },
+    },
+    observations: { type: "array", items: str },
+  },
+  required: ["interests", "strengths", "constraints", "goals", "observations"],
+};
+
+const pathsResponseSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    paths: {
+      type: "array",
+      minItems: 2,
+      maxItems: 3,
+      items: {
+        type: "object",
+        properties: {
+          pathType: { type: "string", enum: [...PATH_TYPES] },
+          title: str,
+          pitch: str,
+          whyThisFitsYou: str,
+          difficulty: { type: "integer" },
+          estimatedWeeks: { type: "integer" },
+          finalArtifact: str,
+        },
+        required: [
+          "pathType",
+          "title",
+          "pitch",
+          "whyThisFitsYou",
+          "difficulty",
+          "estimatedWeeks",
+          "finalArtifact",
+        ],
+      },
+    },
+  },
+  required: ["paths"],
+};
+
+const planResponseSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    steps: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          weekNo: { type: "integer" },
+          title: str,
+          detail: str,
+          dueHint: str,
+        },
+        required: ["weekNo", "title", "detail", "dueHint"],
+      },
+    },
+  },
+  required: ["steps"],
+};
+
+const parentSummaryResponseSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    headline: str,
+    body: str,
+    suggestedActions: { type: "array", items: str },
+  },
+  required: ["headline", "body", "suggestedActions"],
+};
+
 // ── Public task functions ──
 
 export interface IntakeTurnResult {
@@ -224,6 +350,10 @@ export async function runIntake(args: {
       user: extractP.user,
       studentId: args.studentId,
       maxOutputTokens: 1024,
+      // Extraction is a faithful read of what the student said — keep it
+      // deterministic so the graph isn't seeded with invented signals.
+      temperature: 0,
+      jsonSchema: extractionResponseSchema,
     },
     extractionSchema,
   );
@@ -261,6 +391,7 @@ export async function matchProjectPaths(args: {
       studentId: args.studentId,
       maxOutputTokens: 3000,
       temperature: 0.6,
+      jsonSchema: pathsResponseSchema,
     },
     pathsSchema,
   );
@@ -285,6 +416,7 @@ export async function planWeeklySteps(args: {
       studentId: args.studentId,
       maxOutputTokens: 3000,
       temperature: 0.5,
+      jsonSchema: planResponseSchema,
     },
     planSchema,
   );
@@ -309,6 +441,7 @@ export async function generateParentSummary(args: {
       studentId: args.studentId,
       maxOutputTokens: 1500,
       temperature: 0.6,
+      jsonSchema: parentSummaryResponseSchema,
     },
     parentSummarySchema,
   );

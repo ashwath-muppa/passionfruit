@@ -63,22 +63,24 @@ export function IntakeChat({
   }
 
   return (
-    <div className="card flex h-[70vh] flex-col">
+    <div className="card-sheet flex h-[70vh] flex-col p-5">
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1">
         {messages.map((m, i) => (
-          <Bubble key={i} role={m.role} text={m.text} mentorName="Sage" studentName={studentName} />
+          <Turn key={i} role={m.role} text={m.text} studentName={studentName} />
         ))}
-        {loading && <Bubble role="mentor" text="…" mentorName="Sage" studentName={studentName} />}
+        {loading && <Turn role="mentor" loading studentName={studentName} />}
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className="rounded-2xl bg-passionfruit-wash px-3 py-2 text-[13px] text-passionfruit-accentInk">
+            {error}
+          </p>
         )}
       </div>
 
       {complete ? (
-        <div className="mt-4 rounded-xl bg-brand-50 p-4 text-center">
-          <p className="text-sm text-brand-800">
-            Nice — Sage has a great picture of {studentName}. Let&apos;s look at some
-            project ideas.
+        <div className="mt-4 rounded-sheet border border-passionfruit-accentLine bg-passionfruit-wash p-4 text-center">
+          <p className="mentor-voice text-[15px]">
+            Nice — I&apos;ve got a great picture of {studentName}. Let&apos;s look at some project
+            ideas.
           </p>
           <button
             className="btn-primary mt-3"
@@ -105,29 +107,52 @@ export function IntakeChat({
   );
 }
 
-function Bubble({
+function MentorAvatar() {
+  return (
+    <div
+      className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[15px]"
+      style={{ background: "linear-gradient(140deg,#F2B23E,#E8694A)" }}
+      aria-hidden
+    >
+      🌱
+    </div>
+  );
+}
+
+function Turn({
   role,
   text,
-  mentorName,
+  loading = false,
   studentName,
 }: {
   role: "mentor" | "student";
-  text: string;
-  mentorName: string;
+  text?: string;
+  loading?: boolean;
   studentName: string;
 }) {
-  const isMentor = role === "mentor";
+  if (role === "mentor") {
+    return (
+      <div className="flex gap-2.5">
+        <MentorAvatar />
+        <div className="flex-1">
+          <p className="mb-0.5 text-[11px] font-bold text-passionfruit-faint">Sage · your mentor</p>
+          {loading ? (
+            <div className="space-y-2 pt-1" aria-label="Sage is writing">
+              <div className="h-3.5 w-[88%] animate-pulse rounded bg-passionfruit-sunk" />
+              <div className="h-3.5 w-[64%] animate-pulse rounded bg-passionfruit-sunk" />
+            </div>
+          ) : (
+            <p className="mentor-voice whitespace-pre-wrap text-[16px]">{text}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className={`flex ${isMentor ? "justify-start" : "justify-end"}`}>
-      <div className={isMentor ? "max-w-[80%]" : "max-w-[80%] text-right"}>
-        <p className="mb-1 text-xs font-semibold text-slate-400">
-          {isMentor ? mentorName : studentName}
-        </p>
-        <div
-          className={`whitespace-pre-wrap rounded-2xl px-4 py-2 text-sm ${
-            isMentor ? "bg-slate-100 text-slate-800" : "bg-brand-600 text-white"
-          }`}
-        >
+    <div className="flex justify-end">
+      <div className="max-w-[80%]">
+        <p className="mb-1 text-right text-[11px] font-bold text-passionfruit-faint">{studentName}</p>
+        <div className="whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-passionfruit-sunk px-4 py-2 text-[14px] text-passionfruit-body">
           {text}
         </div>
       </div>

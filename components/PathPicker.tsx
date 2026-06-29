@@ -2,9 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PATH_TYPE_LABELS, type ProjectPathCandidate } from "@/lib/types";
+import { PATH_TYPE_LABELS, type PathType, type ProjectPathCandidate } from "@/lib/types";
+import { MentorNote, Spark } from "@/components/MentorNote";
 
-export function PathPicker({ studentId }: { studentId: string }) {
+// Short deliverable eyebrow per path type (DESIGN.md §7a).
+const DELIVERABLE: Record<PathType, string> = {
+  research: "Research paper",
+  app: "Shipped app",
+  sports_analytics: "Data story",
+  creative: "Creative",
+  venture: "Social venture",
+};
+
+export function PathPicker({
+  studentId,
+  studentName,
+  spark,
+}: {
+  studentId: string;
+  studentName: string;
+  spark: string | null;
+}) {
   const router = useRouter();
   const [paths, setPaths] = useState<ProjectPathCandidate[] | null>(null);
   const [generating, setGenerating] = useState(true);
@@ -57,60 +75,106 @@ export function PathPicker({ studentId }: { studentId: string }) {
     }
   }
 
-  if (generating) {
-    return (
-      <div className="card mt-6 text-center text-slate-500">
-        <p className="animate-pulse">Sage is designing project paths from the learner graph…</p>
-        <p className="mt-1 text-xs">This uses the quality model and can take a few seconds.</p>
-      </div>
-    );
-  }
-
-  if (error && !paths) {
-    return (
-      <div className="card mt-6">
-        <p className="text-sm text-red-700">{error}</p>
-        <button className="btn-ghost mt-3" onClick={generate}>Try again</button>
-      </div>
-    );
-  }
-
   return (
-    <div className="mt-6 space-y-4">
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {paths?.map((p, i) => (
-        <div key={i} className="card">
-          <div className="flex items-center justify-between">
-            <span className="pill bg-brand-100 text-brand-800">{PATH_TYPE_LABELS[p.pathType]}</span>
-            <span className="text-xs text-slate-400">
-              ~{p.estimatedWeeks} weeks · difficulty {p.difficulty}/5
-            </span>
-          </div>
-          <h3 className="mt-3 text-lg font-semibold">{p.title}</h3>
-          <p className="mt-1 text-sm text-slate-700">{p.pitch}</p>
-          <p className="mt-3 text-sm text-slate-500">
-            <span className="font-medium text-slate-600">Why this fits you: </span>
-            {p.whyThisFitsYou}
-          </p>
-          <p className="mt-2 text-sm text-slate-500">
-            <span className="font-medium text-slate-600">You&apos;ll end up with: </span>
-            {p.finalArtifact}
-          </p>
-          <button
-            className="btn-primary mt-4"
-            disabled={pickingIdx !== null}
-            onClick={() => pick(i, p)}
-          >
-            {pickingIdx === i ? "Building your weekly plan…" : "Choose this path"}
+    <div className="px-[18px] pb-6">
+      {/* Mentor note — skeleton while generating, then the warm intro. */}
+      {generating ? (
+        <MentorNote loading />
+      ) : (
+        <MentorNote>
+          Hi {studentName} — I found <Spark>three paths</Spark> that fit how you think
+          {spark ? ` about ${spark}` : ""}. Pick the one that sparks something.
+        </MentorNote>
+      )}
+
+      <div className="px-0.5 pb-2.5 pt-[18px]">
+        <span className="eyebrow">Your paths · picked for you</span>
+      </div>
+
+      {error && (
+        <div className="card mb-3">
+          <p className="text-[13px] text-passionfruit-accentInk">{error}</p>
+          <button className="btn-ghost mt-3 text-xs" onClick={generate}>
+            Try again
           </button>
         </div>
-      ))}
+      )}
 
-      <div className="text-center">
-        <button className="btn-ghost" onClick={generate} disabled={pickingIdx !== null}>
-          Regenerate ideas
-        </button>
+      {generating && !paths && (
+        <div className="flex flex-col gap-2.5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="card h-[132px] animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2.5">
+        {paths?.map((p, i) => {
+          const best = i === 0;
+          const picking = pickingIdx === i;
+          return (
+            <div
+              key={i}
+              className={`rounded-[20px] bg-passionfruit-card p-[15px] ${
+                best ? "border-[1.5px] border-passionfruit-accent" : "border border-passionfruit-line"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={`chip-eyebrow ${
+                    best
+                      ? "bg-passionfruit-wash text-passionfruit-accent"
+                      : "bg-passionfruit-sunk text-passionfruit-faint"
+                  }`}
+                >
+                  {DELIVERABLE[p.pathType]}
+                </span>
+                {best && (
+                  <span className="text-[11px] font-semibold text-passionfruit-accent">★ best fit</span>
+                )}
+              </div>
+
+              <h3 className="mt-2 font-display text-[21px] font-semibold leading-[1.2] text-passionfruit-ink">
+                {p.title}
+              </h3>
+              <p className="mt-1.5 text-[13px] leading-[1.45] text-passionfruit-muted">{p.pitch}</p>
+
+              {best && (
+                <p className="mt-2 text-[12px] leading-[1.45] text-passionfruit-faint">
+                  <span className="font-semibold text-passionfruit-muted">Why it fits: </span>
+                  {p.whyThisFitsYou}
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <span className="pill">~{p.estimatedWeeks} weeks</span>
+                <span className="pill">difficulty {p.difficulty}/5</span>
+                <span className="pill">{PATH_TYPE_LABELS[p.pathType]}</span>
+              </div>
+
+              <p className="mt-2.5 text-[12px] text-passionfruit-faint">
+                Ends in: {p.finalArtifact}
+              </p>
+
+              <button
+                className="btn-primary mt-3.5 w-full"
+                disabled={pickingIdx !== null}
+                onClick={() => pick(i, p)}
+              >
+                {picking ? "Building your weekly plan…" : "Choose this path →"}
+              </button>
+            </div>
+          );
+        })}
       </div>
+
+      {paths && (
+        <div className="mt-4 text-center">
+          <button className="btn-soft text-xs" onClick={generate} disabled={pickingIdx !== null}>
+            Regenerate ideas
+          </button>
+        </div>
+      )}
     </div>
   );
 }

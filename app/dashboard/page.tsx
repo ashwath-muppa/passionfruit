@@ -4,26 +4,29 @@ import { requireParent, listStudents } from "@/lib/auth/parent";
 import { db } from "@/lib/db/client";
 import { interests, projects } from "@/lib/db/schema";
 import { AppHeader } from "@/components/AppHeader";
+import { StudentAvatar } from "@/components/StudentAvatar";
 
 export const dynamic = "force-dynamic";
 
 async function studentStatus(studentId: string) {
   const [[ic], [pc]] = await Promise.all([
-    db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(interests)
-      .where(eq(interests.studentId, studentId)),
-    db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(projects)
-      .where(eq(projects.studentId, studentId)),
+    db.select({ n: sql<number>`count(*)::int` }).from(interests).where(eq(interests.studentId, studentId)),
+    db.select({ n: sql<number>`count(*)::int` }).from(projects).where(eq(projects.studentId, studentId)),
   ]);
   const hasGraph = (ic?.n ?? 0) > 0;
   const hasProject = (pc?.n ?? 0) > 0;
-  if (hasProject) return { label: "Project in progress", href: "", cta: "Open dashboard", color: "bg-green-100 text-green-800" };
-  if (hasGraph) return { label: "Ready for project paths", href: "/paths", cta: "See project paths", color: "bg-brand-100 text-brand-800" };
-  return { label: "Needs intake", href: "/intake", cta: "Start intake", color: "bg-amber-100 text-amber-800" };
+  if (hasProject)
+    return { label: "Project in progress", href: "", cta: "Open dashboard", tone: "accent" as const };
+  if (hasGraph)
+    return { label: "Ready for project paths", href: "/paths", cta: "See project paths", tone: "gold" as const };
+  return { label: "Needs intake", href: "/intake", cta: "Start intake", tone: "muted" as const };
 }
+
+const TONE: Record<"accent" | "gold" | "muted", string> = {
+  accent: "bg-passionfruit-wash text-passionfruit-accentInk",
+  gold: "bg-[#FBEFD6] text-[#9A6B12]",
+  muted: "bg-passionfruit-sunk text-passionfruit-muted",
+};
 
 export default async function DashboardPage() {
   const parent = await requireParent();
@@ -36,8 +39,8 @@ export default async function DashboardPage() {
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Your students</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="font-display text-[28px] font-semibold text-passionfruit-ink">Your students</h1>
+            <p className="text-[13px] text-passionfruit-muted">
               You hold the account. Each profile below belongs to you.
             </p>
           </div>
@@ -47,8 +50,8 @@ export default async function DashboardPage() {
         </div>
 
         {kids.length === 0 ? (
-          <div className="card mt-8 text-center">
-            <p className="text-slate-600">No students yet.</p>
+          <div className="card-sheet mt-8 p-8 text-center">
+            <p className="text-passionfruit-muted">No students yet.</p>
             <Link href="/students/new" className="btn-primary mt-4">
               Create your first student profile
             </Link>
@@ -61,24 +64,27 @@ export default async function DashboardPage() {
                 <Link
                   key={kid.id}
                   href={`/students/${kid.id}${status.href}`}
-                  className="card transition hover:border-brand-300 hover:shadow-md"
+                  className="card-sheet transition hover:-translate-y-0.5 hover:shadow-elev"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold">{kid.name}</h2>
-                      <p className="text-sm text-slate-500">
+                  <div className="flex items-start gap-3">
+                    <StudentAvatar name={kid.name} size={42} />
+                    <div className="flex-1">
+                      <h2 className="font-display text-[18px] font-semibold text-passionfruit-ink">
+                        {kid.name}
+                      </h2>
+                      <p className="text-[12px] text-passionfruit-faint">
                         {[kid.age ? `Age ${kid.age}` : null, kid.grade ? `Grade ${kid.grade}` : null]
                           .filter(Boolean)
                           .join(" · ")}
+                        {kid.under13 && " · Under 13"}
                       </p>
                     </div>
-                    {kid.under13 && (
-                      <span className="pill bg-slate-100 text-slate-600">Under 13</span>
-                    )}
                   </div>
                   <div className="mt-4 flex items-center justify-between">
-                    <span className={`pill ${status.color}`}>{status.label}</span>
-                    <span className="text-sm font-medium text-brand-600">{status.cta} →</span>
+                    <span className={`pill ${TONE[status.tone]}`}>{status.label}</span>
+                    <span className="text-[13px] font-semibold text-passionfruit-accentInk">
+                      {status.cta} →
+                    </span>
                   </div>
                 </Link>
               );
