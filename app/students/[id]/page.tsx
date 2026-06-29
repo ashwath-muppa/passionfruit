@@ -15,9 +15,14 @@ import { ParentSummaryCard } from "@/components/ParentSummaryCard";
 import { ProjectTimelineRail } from "@/components/ProjectTimelineRail";
 import { UpNext } from "@/components/UpNext";
 import { ParentTargetControl } from "@/components/ParentTargetControl";
+import { IntersectionCard } from "@/components/IntersectionCard";
+import { CalendarActions } from "@/components/CalendarActions";
+import { SpikeLadder } from "@/components/SpikeLadder";
 import { StudentAvatar } from "@/components/StudentAvatar";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
+import { pickLadder } from "@/lib/deliverables/ladders";
+import { inferDomains } from "@/lib/deliverables/match";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +53,16 @@ export default async function StudentDashboard({
   const hasGraph = !!graph && graph.interests.length > 0;
   const period = `${MONTHS[new Date().getMonth()]} summary`;
   const prog = project ? projectProgress(project.milestones) : null;
+
+  // The spike ladder this student's target sits on (#3) — the moat made visible.
+  const gradeNum = student.grade ? parseInt(student.grade, 10) : null;
+  const ladder = hasGraph
+    ? pickLadder({
+        domains: inferDomains(graph!),
+        targetSlug: target?.deliverable.slug ?? null,
+        grade: Number.isFinite(gradeNum) ? gradeNum : null,
+      })
+    : null;
 
   return (
     <div className="min-h-screen">
@@ -120,6 +135,10 @@ export default async function StudentDashboard({
                 </div>
               )}
 
+              {ladder && (
+                <SpikeLadder ladder={ladder.ladder} currentRungIndex={ladder.currentRungIndex} />
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 {project ? (
                   <ProjectTimelineRail
@@ -155,6 +174,8 @@ export default async function StudentDashboard({
                 )}
                 <UpNext opportunities={opportunities} />
               </div>
+
+              <CalendarActions studentId={id} />
 
               {project && (
                 <div className="flex flex-wrap items-center gap-2 px-1">
@@ -192,6 +213,10 @@ export default async function StudentDashboard({
                   }
                 />
               )}
+
+              {/* Signature theme (#10): fuse the student's interests into one
+                  ownable direction aimed at the family's chosen end-goal. */}
+              {hasGraph && <IntersectionCard studentId={id} studentName={firstName} />}
             </div>
           </div>
         </div>
