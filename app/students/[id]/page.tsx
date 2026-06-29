@@ -18,11 +18,14 @@ import { ParentTargetControl } from "@/components/ParentTargetControl";
 import { IntersectionCard } from "@/components/IntersectionCard";
 import { CalendarActions } from "@/components/CalendarActions";
 import { SpikeLadder } from "@/components/SpikeLadder";
+import { StreakBadges } from "@/components/StreakBadges";
+import { DigestControl } from "@/components/DigestControl";
 import { StudentAvatar } from "@/components/StudentAvatar";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
 import { pickLadder } from "@/lib/deliverables/ladders";
 import { inferDomains } from "@/lib/deliverables/match";
+import { getEngagement } from "@/lib/engagement";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +44,13 @@ export default async function StudentDashboard({
   const student = await getOwnedStudent(id);
   if (!student) notFound();
 
-  const [graph, project, skills, opportunities, target] = await Promise.all([
+  const [graph, project, skills, opportunities, target, engagement] = await Promise.all([
     getLearnerGraphSnapshot(id),
     getActiveProject(id),
     getSkills(id),
     getOpportunities(id),
     getActiveTarget(id),
+    getEngagement(id),
   ]);
 
   const firstName = student.name.split(" ")[0] ?? student.name;
@@ -105,6 +109,7 @@ export default async function StudentDashboard({
             <div className="flex flex-col gap-4">
               <SkillsPlanner skills={skills} />
               <ParentSummaryCard studentId={id} studentFirstName={firstName} />
+              <DigestControl studentId={id} studentName={firstName} />
               {!hasGraph && (
                 <div className="card text-center">
                   <p className="text-[13px] text-passionfruit-muted">
@@ -174,6 +179,8 @@ export default async function StudentDashboard({
                 )}
                 <UpNext opportunities={opportunities} />
               </div>
+
+              <StreakBadges engagement={engagement} />
 
               <CalendarActions studentId={id} />
 

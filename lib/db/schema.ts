@@ -16,6 +16,7 @@ import {
   real,
   text,
   timestamp,
+  unique,
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
@@ -128,6 +129,10 @@ export const resourceKind = pgEnum("resource_kind", [
   "other",
 ]);
 
+// Retention phase enums (#6 habit loop, #8 parent digest).
+export const weeklyFocusStatus = pgEnum("weekly_focus_status", ["open", "celebrated"]);
+export const digestKind = pgEnum("digest_kind", ["monthly", "weekly"]);
+
 // ── Accounts: parent is the account holder (COPPA / parent-mediated). ──
 export const parents = pgTable("parents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -156,6 +161,8 @@ export const students = pgTable("students", {
   // family feels they're steering. Null = "let the mentor suggest".
   endGoalPref: text("end_goal_pref"), // research | competition | portfolio | venture | award | open
   goalNote: text("goal_note"),
+  // Activation sprint (#6): when the student hit their first tangible win.
+  firstWinAt: timestamp("first_win_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -360,6 +367,61 @@ export const resources = pgTable("resources", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Engagement (#7): one streak row per student (Duolingo-style consistency). ──
+export const streaks = pgTable("streaks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .unique()
+    .references(() => students.id, { onDelete: "cascade" }),
+  current: integer("current").notNull().default(0),
+  longest: integer("longest").notNull().default(0),
+  lastCheckIn: timestamp("last_check_in", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── Engagement (#7): collectible milestone badges. ──
+export const badges = pgTable(
+  "badges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(), // stable id, e.g. "first-ship"
+    label: text("label").notNull(),
+    emoji: text("emoji"),
+    earnedAt: timestamp("earned_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({ studentSlug: unique("badges_student_slug_uniq").on(t.studentId, t.slug) }),
+);
+
+// ── Weekly habit loop (#6): the AI-generated "here's your week" focus card. ──
+export const weeklyFocus = pgTable("weekly_focus", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  weekStart: timestamp("week_start", { withTimezone: true }).notNull(),
+  headline: text("headline").notNull(),
+  tasks: jsonb("tasks").$type<{ text: string; done: boolean }[]>().notNull().default([]),
+  status: weeklyFocusStatus("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── Parent digests (#8): a log of monthly summaries + weekly support nudges. ──
+export const digests = pgTable("digests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  kind: digestKind("kind").notNull(),
+  subject: text("subject"),
+  body: text("body"),
+  channel: text("channel").notNull().default("onscreen"), // email | onscreen
+  sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Artifacts: outputs / reflections. Metadata + text only for now. ──
 export const artifacts = pgTable("artifacts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -423,6 +485,10 @@ export type Opportunity = typeof opportunities.$inferSelect;
 export type Deliverable = typeof deliverables.$inferSelect;
 export type ProjectTarget = typeof projectTargets.$inferSelect;
 export type Resource = typeof resources.$inferSelect;
+export type Streak = typeof streaks.$inferSelect;
+export type Badge = typeof badges.$inferSelect;
+export type WeeklyFocus = typeof weeklyFocus.$inferSelect;
+export type Digest = typeof digests.$inferSelect;
 export type Artifact = typeof artifacts.$inferSelect;
 export type AiInteraction = typeof aiInteractions.$inferSelect;
 export type SafetyFlag = typeof safetyFlags.$inferSelect;
