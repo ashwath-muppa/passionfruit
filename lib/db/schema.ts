@@ -116,6 +116,18 @@ export const targetStatus = pgEnum("target_status", [
   "declined", // parent or student set it aside
 ]);
 
+// Live Resource Finder (#2): concrete external resources attached to a step.
+export const resourceKind = pgEnum("resource_kind", [
+  "course",
+  "program",
+  "portfolio",
+  "dataset",
+  "tool",
+  "competition",
+  "reading",
+  "other",
+]);
+
 // ── Accounts: parent is the account holder (COPPA / parent-mediated). ──
 export const parents = pgTable("parents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -330,6 +342,24 @@ export const projectTargets = pgTable("project_targets", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Live resources attached to a milestone (#2): the best free course / program
+//    / portfolio / dataset for that step. Web-sourced + vetted, then cached. ──
+export const resources = pgTable("resources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  milestoneId: uuid("milestone_id").references(() => milestones.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id").references(() => students.id, { onDelete: "cascade" }),
+  kind: resourceKind("kind").notNull(),
+  title: text("title").notNull(),
+  provider: text("provider"), // e.g. "Coursera", "Kaggle"
+  url: text("url"),
+  costNote: text("cost_note"), // e.g. "Free audit"
+  summary: text("summary"), // why it helps this step
+  flags: jsonb("flags").$type<string[]>().notNull().default([]),
+  source: text("source").notNull().default("curated"), // grounded | curated | catalog
+  lastVerified: timestamp("last_verified", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Artifacts: outputs / reflections. Metadata + text only for now. ──
 export const artifacts = pgTable("artifacts", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -392,6 +422,7 @@ export type Skill = typeof skills.$inferSelect;
 export type Opportunity = typeof opportunities.$inferSelect;
 export type Deliverable = typeof deliverables.$inferSelect;
 export type ProjectTarget = typeof projectTargets.$inferSelect;
+export type Resource = typeof resources.$inferSelect;
 export type Artifact = typeof artifacts.$inferSelect;
 export type AiInteraction = typeof aiInteractions.$inferSelect;
 export type SafetyFlag = typeof safetyFlags.$inferSelect;

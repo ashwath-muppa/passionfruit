@@ -25,6 +25,7 @@ import {
   parents,
   projects,
   projectTargets,
+  resources,
   skills,
   strengths,
   students,
@@ -88,6 +89,15 @@ async function embed(text: string): Promise<number[] | null> {
   }
 }
 
+interface SeedResource {
+  kind: "course" | "program" | "portfolio" | "dataset" | "tool" | "competition" | "reading" | "other";
+  title: string;
+  provider: string;
+  url: string;
+  costNote: string;
+  summary: string;
+}
+
 interface SeedMilestone {
   weekNo: number;
   title: string;
@@ -98,6 +108,7 @@ interface SeedMilestone {
   icon: string;
   coach?: string;
   dueHint?: string;
+  resources?: SeedResource[];
 }
 
 interface Profile {
@@ -219,6 +230,16 @@ const PROFILES: Profile[] = [
           kind: "Course",
           source: "Coursera",
           icon: "🐍",
+          resources: [
+            {
+              kind: "course",
+              title: "Python for Everybody",
+              provider: "Coursera (U. Michigan)",
+              url: "https://www.coursera.org/specializations/python",
+              costNote: "Free audit",
+              summary: "A gentle, well-loved intro to programming you can audit for free.",
+            },
+          ],
         },
         {
           weekNo: 2,
@@ -228,6 +249,16 @@ const PROFILES: Profile[] = [
           kind: "Dataset",
           source: "38 matches",
           icon: "📋",
+          resources: [
+            {
+              kind: "dataset",
+              title: "Kaggle Datasets",
+              provider: "Kaggle",
+              url: "https://www.kaggle.com/datasets",
+              costNote: "Free",
+              summary: "Thousands of open datasets to practice with (parental consent under 18).",
+            },
+          ],
         },
         {
           weekNo: 3,
@@ -237,6 +268,16 @@ const PROFILES: Profile[] = [
           kind: "Visualization",
           source: "Notebook",
           icon: "📊",
+          resources: [
+            {
+              kind: "tool",
+              title: "Google Colab",
+              provider: "Google",
+              url: "https://colab.research.google.com",
+              costNote: "Free",
+              summary: "A free, no-install Python notebook with charts — perfect for first analyses.",
+            },
+          ],
         },
         {
           weekNo: 4,
@@ -249,6 +290,24 @@ const PROFILES: Profile[] = [
           coach:
             "Start with one clear claim, then let the chart back it up. I'll read your first draft with you on Thursday →",
           dueHint: "by end of week 4",
+          resources: [
+            {
+              kind: "reading",
+              title: "Purdue OWL",
+              provider: "Purdue University",
+              url: "https://owl.purdue.edu",
+              costNote: "Free",
+              summary: "The standard free guide to citations and clear academic writing.",
+            },
+            {
+              kind: "tool",
+              title: "Datawrapper",
+              provider: "Datawrapper",
+              url: "https://www.datawrapper.de",
+              costNote: "Free tier",
+              summary: "Make clean, shareable charts to back up your argument.",
+            },
+          ],
         },
         {
           weekNo: 6,
@@ -469,18 +528,34 @@ async function main() {
         })
         .returning();
       for (const m of p.project.milestones) {
-        await db.insert(milestones).values({
-          projectId: project!.id,
-          weekNo: m.weekNo,
-          title: m.title,
-          detail: m.detail,
-          status: m.status,
-          kind: m.kind,
-          source: m.source,
-          icon: m.icon,
-          coach: m.coach ?? null,
-          dueHint: m.dueHint ?? null,
-        });
+        const [ms] = await db
+          .insert(milestones)
+          .values({
+            projectId: project!.id,
+            weekNo: m.weekNo,
+            title: m.title,
+            detail: m.detail,
+            status: m.status,
+            kind: m.kind,
+            source: m.source,
+            icon: m.icon,
+            coach: m.coach ?? null,
+            dueHint: m.dueHint ?? null,
+          })
+          .returning();
+        for (const r of m.resources ?? []) {
+          await db.insert(resources).values({
+            milestoneId: ms!.id,
+            studentId,
+            kind: r.kind,
+            title: r.title,
+            provider: r.provider,
+            url: r.url,
+            costNote: r.costNote,
+            summary: r.summary,
+            source: "curated",
+          });
+        }
       }
       // Anchor the project to its real-world target (parent-approved).
       if (p.project.targetSlug) {

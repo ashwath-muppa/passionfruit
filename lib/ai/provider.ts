@@ -23,5 +23,7 @@ export interface ModelProvider {
   generateText(params: GenerateTextParams): Promise<string>;
   /** Returns a raw JSON string; callers validate with Zod. */
   generateJSON(params: GenerateJSONParams): Promise<string>;
+  /** Web-grounded generation (real, current sources via search). Raw text. */
+  generateGrounded(params: GenerateTextParams): Promise<string>;
   embed(model: string, text: string): Promise<number[]>;
 }

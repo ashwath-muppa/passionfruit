@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
-import { getActiveProject } from "@/lib/db/queries";
+import { getActiveProject, getResourcesForProject } from "@/lib/db/queries";
+import type { Resource } from "@/lib/db/schema";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
 import { PhoneFrame } from "@/components/PhoneFrame";
@@ -24,6 +25,14 @@ export default async function WeeklyPlanPage({
   if (!project) redirect(`/students/${id}`);
 
   const prog = projectProgress(project.milestones);
+
+  // Group cached Live Resource Finder chips by milestone (#2).
+  const resourceRows = await getResourcesForProject(project.project.id);
+  const resourcesByMilestone = resourceRows.reduce<Record<string, Resource[]>>((acc, r) => {
+    if (!r.milestoneId) return acc;
+    (acc[r.milestoneId] ??= []).push(r);
+    return acc;
+  }, {});
 
   return (
     <main className="mx-auto min-h-screen max-w-[392px] px-4 py-8">
@@ -57,7 +66,10 @@ export default async function WeeklyPlanPage({
           <span className="eyebrow">Your milestones</span>
         </div>
         <div className="px-5 pb-6">
-          <MilestoneList initial={project.milestones} />
+          <MilestoneList
+            initial={project.milestones}
+            resourcesByMilestone={resourcesByMilestone}
+          />
         </div>
       </PhoneFrame>
     </main>

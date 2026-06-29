@@ -14,6 +14,7 @@ import {
   opportunities,
   projects,
   projectTargets,
+  resources,
   skills,
   strengths,
   students,
@@ -27,6 +28,7 @@ import type {
   Opportunity,
   Project,
   ProjectTarget,
+  Resource,
   Skill,
   Strength,
   Student,
@@ -140,4 +142,14 @@ export async function getActiveTarget(studentId: string): Promise<ActiveTarget |
 export async function getDeliverableBySlug(slug: string): Promise<Deliverable | null> {
   const [row] = await db.select().from(deliverables).where(eq(deliverables.slug, slug)).limit(1);
   return row ?? null;
+}
+
+/** All cached resources across a project's milestones (for the weekly plan). */
+export async function getResourcesForProject(projectId: string): Promise<Resource[]> {
+  const rows = await db
+    .select({ resource: resources })
+    .from(resources)
+    .innerJoin(milestones, eq(resources.milestoneId, milestones.id))
+    .where(eq(milestones.projectId, projectId));
+  return rows.map((r) => r.resource);
 }
