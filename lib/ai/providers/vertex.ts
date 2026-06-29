@@ -37,7 +37,10 @@ async function accessToken(): Promise<string> {
 function modelUrl(model: string, method: "generateContent" | "predict"): string {
   const loc = aiEnv.vertexLocation;
   const proj = aiEnv.vertexProject;
-  return `https://${loc}-aiplatform.googleapis.com/v1/projects/${proj}/locations/${loc}/publishers/google/models/${model}:${method}`;
+  // The "global" endpoint has no region prefix on the host (newer models, e.g.
+  // gemini-3.x, are served there); regional endpoints are "{loc}-aiplatform…".
+  const host = loc === "global" ? "aiplatform.googleapis.com" : `${loc}-aiplatform.googleapis.com`;
+  return `https://${host}/v1/projects/${proj}/locations/${loc}/publishers/google/models/${model}:${method}`;
 }
 
 async function callJson(url: string, body: unknown): Promise<unknown> {
@@ -72,6 +75,12 @@ function textFromResponse(data: GenerateResponse): string {
   return (cand?.content?.parts ?? []).map((p) => p.text ?? "").join("");
 }
 
+// Gemini 2.5+ / 3.x are "thinking" models, and on Vertex `maxOutputTokens`
+// counts thinking tokens too. Cap the thinking budget and add it ON TOP of the
+// caller's intended answer size, so reasoning never truncates the (often JSON)
+// answer. Keep some thinking — it lifts quality on the pro tier.
+const THINKING_BUDGET = 1024;
+
 function generationBody(params: GenerateTextParams, extra: Record<string, unknown> = {}) {
   return {
     contents: [{ role: "user", parts: [{ text: params.user }] }],
@@ -79,7 +88,8 @@ function generationBody(params: GenerateTextParams, extra: Record<string, unknow
     safetySettings,
     generationConfig: {
       temperature: params.temperature ?? 0.7,
-      maxOutputTokens: params.maxOutputTokens ?? 2048,
+      thinkingConfig: { thinkingBudget: THINKING_BUDGET },
+      maxOutputTokens: (params.maxOutputTokens ?? 2048) + THINKING_BUDGET,
       ...extra,
     },
   };
