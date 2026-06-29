@@ -37,7 +37,13 @@ async function accessToken(): Promise<string> {
 function modelUrl(model: string, method: "generateContent" | "predict"): string {
   const loc = aiEnv.vertexLocation;
   const proj = aiEnv.vertexProject;
-  return `https://${loc}-aiplatform.googleapis.com/v1/projects/${proj}/locations/${loc}/publishers/google/models/${model}:${method}`;
+  // The "global" endpoint uses the unprefixed host (and serves the newest
+  // models, e.g. gemini-3.5-flash); regional endpoints prefix the host.
+  const host =
+    loc === "global"
+      ? "https://aiplatform.googleapis.com"
+      : `https://${loc}-aiplatform.googleapis.com`;
+  return `${host}/v1/projects/${proj}/locations/${loc}/publishers/google/models/${model}:${method}`;
 }
 
 async function callJson(url: string, body: unknown): Promise<unknown> {

@@ -25,10 +25,9 @@ export const aiEnv = {
     return process.env.FAST_MODEL ?? "gemini-2.5-flash-lite";
   },
   /** Quality model: anything a kid or parent actually reads (mentor voice).
-   *  Defaulted to flash-lite for fast, free-tier-friendly testing; bump to
-   *  gemini-2.5-flash / gemini-2.5-pro for richer voice via env. */
+   *  gemini-3.5-flash on Vertex (served via the global endpoint). */
   get qualityModel() {
-    return process.env.QUALITY_MODEL ?? "gemini-2.5-flash-lite";
+    return process.env.QUALITY_MODEL ?? "gemini-3.5-flash";
   },
   get embeddingModel() {
     return process.env.EMBEDDING_MODEL ?? "gemini-embedding-001";
@@ -44,9 +43,11 @@ export const aiEnv = {
   get vertexProject() {
     return required("GOOGLE_CLOUD_PROJECT");
   },
-  /** Vertex regional endpoint (model availability varies by region). */
+  /** Vertex endpoint location. "global" serves the newest models
+   *  (gemini-3.5-flash); regional values (e.g. us-central1) also work for
+   *  older models. Availability varies by location. */
   get vertexLocation() {
-    return process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1";
+    return process.env.GOOGLE_CLOUD_LOCATION ?? "global";
   },
 };
 
