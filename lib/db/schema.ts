@@ -83,6 +83,39 @@ export const flagStatus = pgEnum("flag_status", [
   "dismissed",
 ]);
 
+// ── Deliverables catalog (the vetted real-world targets). Mirrors the field
+//    spec in passionfruit_deliverables_catalog. ──
+export const deliverableCategory = pgEnum("deliverable_category", [
+  "paper",
+  "competition",
+  "award",
+]);
+export const deliverableDifficulty = pgEnum("deliverable_difficulty", [
+  "intro",
+  "intermediate",
+  "advanced",
+  "elite",
+]);
+// t1 = flagship scarcity signal … t4 = participation; flag = community red flag.
+export const prestigeTier = pgEnum("prestige_tier", ["t1", "t2", "t3", "t4", "flag"]);
+export const costBand = pgEnum("cost_band", ["free", "low", "medium", "high"]);
+export const deliverableStatus = pgEnum("deliverable_status", [
+  "active",
+  "paused",
+  "discontinued",
+  "uncertain",
+]);
+// Lifecycle of a project's anchored real-world target. Parent approval is an
+// explicit gate so the family steers the end-goal (the student drives interests).
+export const targetStatus = pgEnum("target_status", [
+  "suggested", // AI proposed it
+  "parent_approved", // the parent chose/approved it as the north star
+  "active", // the project is working toward it
+  "submitted", // submitted / entered
+  "achieved", // accepted / placed / won
+  "declined", // parent or student set it aside
+]);
+
 // ── Accounts: parent is the account holder (COPPA / parent-mediated). ──
 export const parents = pgTable("parents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -105,6 +138,12 @@ export const students = pgTable("students", {
   under13: boolean("under_13").notNull().default(false),
   parentalConsent: boolean("parental_consent").notNull().default(false),
   consentAt: timestamp("consent_at", { withTimezone: true }),
+  // Parent-set direction (DESIGN #10): the student drives interests; the parent
+  // chooses the kind of end-goal they'd love their child to aim at, and adds a
+  // free-text aspiration. The AI proposes targets *within* this guardrail so the
+  // family feels they're steering. Null = "let the mentor suggest".
+  endGoalPref: text("end_goal_pref"), // research | competition | portfolio | venture | award | open
+  goalNote: text("goal_note"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -239,6 +278,55 @@ export const opportunities = pgTable("opportunities", {
   kind: opportunityKind("kind").notNull(),
   title: text("title").notNull(),
   whenHint: text("when_hint"), // soft schedule, e.g. "Thu 4pm"
+  // Optional link back to the deliverable this opportunity is a deadline for
+  // (set by the calendar engine, #4). Nullable for free-form items.
+  deliverableId: uuid("deliverable_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── The deliverables catalog: vetted real-world targets (papers, competitions,
+//    awards). Owned in our DB; the matcher reads from here. ──
+export const deliverables = pgTable("deliverables", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(), // stable id from the catalog
+  name: text("name").notNull(),
+  category: deliverableCategory("category").notNull(),
+  subtype: text("subtype"),
+  domains: jsonb("domains").$type<string[]>().notNull().default([]),
+  minGrade: integer("min_grade"),
+  msAccessible: boolean("ms_accessible").notNull().default(false),
+  ageNote: text("age_note"),
+  difficulty: deliverableDifficulty("difficulty").notNull(),
+  prestigeTier: prestigeTier("prestige_tier").notNull(),
+  prerequisites: text("prerequisites"),
+  costBand: costBand("cost_band").notNull(),
+  costNote: text("cost_note"),
+  cadence: text("cadence"),
+  howToStart: text("how_to_start"),
+  a2cInsight: text("a2c_insight"),
+  status: deliverableStatus("status").notNull().default("active"),
+  // Community red flags (pay-to-publish, fee-on-acceptance, high-acceptance, …).
+  // The matcher NEVER surfaces a flagged item as a credential.
+  flags: jsonb("flags").$type<string[]>().notNull().default([]),
+  url: text("url"),
+  embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── A project's anchored real-world target, with the parent-approval gate. ──
+export const projectTargets = pgTable("project_targets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  // Null until a path is promoted to a project; the target can be chosen first.
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+  deliverableId: uuid("deliverable_id")
+    .notNull()
+    .references(() => deliverables.id, { onDelete: "cascade" }),
+  rationale: text("rationale"), // why this fits THIS student
+  status: targetStatus("status").notNull().default("suggested"),
+  parentApproved: boolean("parent_approved").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -302,6 +390,8 @@ export type Project = typeof projects.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
 export type Skill = typeof skills.$inferSelect;
 export type Opportunity = typeof opportunities.$inferSelect;
+export type Deliverable = typeof deliverables.$inferSelect;
+export type ProjectTarget = typeof projectTargets.$inferSelect;
 export type Artifact = typeof artifacts.$inferSelect;
 export type AiInteraction = typeof aiInteractions.$inferSelect;
 export type SafetyFlag = typeof safetyFlags.$inferSelect;

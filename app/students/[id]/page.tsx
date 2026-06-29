@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
 import {
   getActiveProject,
+  getActiveTarget,
   getLearnerGraphSnapshot,
   getOpportunities,
   getSkills,
@@ -13,6 +14,7 @@ import { SkillsPlanner } from "@/components/SkillsPlanner";
 import { ParentSummaryCard } from "@/components/ParentSummaryCard";
 import { ProjectTimelineRail } from "@/components/ProjectTimelineRail";
 import { UpNext } from "@/components/UpNext";
+import { ParentTargetControl } from "@/components/ParentTargetControl";
 import { StudentAvatar } from "@/components/StudentAvatar";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
@@ -34,11 +36,12 @@ export default async function StudentDashboard({
   const student = await getOwnedStudent(id);
   if (!student) notFound();
 
-  const [graph, project, skills, opportunities] = await Promise.all([
+  const [graph, project, skills, opportunities, target] = await Promise.all([
     getLearnerGraphSnapshot(id),
     getActiveProject(id),
     getSkills(id),
     getOpportunities(id),
+    getActiveTarget(id),
   ]);
 
   const firstName = student.name.split(" ")[0] ?? student.name;
@@ -169,6 +172,25 @@ export default async function StudentDashboard({
                     Open weekly plan →
                   </Link>
                 </div>
+              )}
+
+              {/* Parent north-star: the family steers the end-goal; Sage maps the
+                  route from the student's interests (#10). Shown once intake is done. */}
+              {hasGraph && (
+                <ParentTargetControl
+                  studentId={id}
+                  studentName={firstName}
+                  initialPref={student.endGoalPref}
+                  activeTarget={
+                    target
+                      ? {
+                          deliverable: { ...target.deliverable, embedding: null },
+                          rationale: target.target.rationale,
+                          approved: target.target.parentApproved,
+                        }
+                      : null
+                  }
+                />
               )}
             </div>
           </div>
