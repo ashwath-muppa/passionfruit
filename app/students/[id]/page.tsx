@@ -20,12 +20,14 @@ import { CalendarActions } from "@/components/CalendarActions";
 import { SpikeLadder } from "@/components/SpikeLadder";
 import { StreakBadges } from "@/components/StreakBadges";
 import { DigestControl } from "@/components/DigestControl";
+import { CheckpointBooking } from "@/components/CheckpointBooking";
 import { StudentAvatar } from "@/components/StudentAvatar";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
 import { pickLadder } from "@/lib/deliverables/ladders";
 import { inferDomains } from "@/lib/deliverables/match";
 import { getEngagement } from "@/lib/engagement";
+import { listMentors, getCheckpoints, checkpointUsage } from "@/lib/mentors/checkpoints";
 
 export const dynamic = "force-dynamic";
 
@@ -44,14 +46,18 @@ export default async function StudentDashboard({
   const student = await getOwnedStudent(id);
   if (!student) notFound();
 
-  const [graph, project, skills, opportunities, target, engagement] = await Promise.all([
-    getLearnerGraphSnapshot(id),
-    getActiveProject(id),
-    getSkills(id),
-    getOpportunities(id),
-    getActiveTarget(id),
-    getEngagement(id),
-  ]);
+  const [graph, project, skills, opportunities, target, engagement, mentors, checkpoints, usage] =
+    await Promise.all([
+      getLearnerGraphSnapshot(id),
+      getActiveProject(id),
+      getSkills(id),
+      getOpportunities(id),
+      getActiveTarget(id),
+      getEngagement(id),
+      listMentors(),
+      getCheckpoints(id),
+      checkpointUsage(id),
+    ]);
 
   const firstName = student.name.split(" ")[0] ?? student.name;
   const hasGraph = !!graph && graph.interests.length > 0;
@@ -182,6 +188,14 @@ export default async function StudentDashboard({
 
               <StreakBadges engagement={engagement} />
 
+              <CheckpointBooking
+                studentId={id}
+                studentName={firstName}
+                mentors={mentors}
+                checkpoints={checkpoints}
+                usage={usage}
+              />
+
               <CalendarActions studentId={id} />
 
               {project && (
@@ -201,6 +215,20 @@ export default async function StudentDashboard({
                   </Link>
                 </div>
               )}
+
+              {/* Real Artifact Pipeline (#5): the wall of finished work to see + share. */}
+              <div className="flex flex-wrap items-center gap-2 px-1">
+                <span className="pill">Portfolio</span>
+                <span className="text-[13px] text-passionfruit-muted">
+                  {firstName}&apos;s real, finished work
+                </span>
+                <Link
+                  href={`/students/${id}/portfolio`}
+                  className="ml-auto text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
+                >
+                  Open portfolio →
+                </Link>
+              </div>
 
               {/* Parent north-star: the family steers the end-goal; Sage maps the
                   route from the student's interests (#10). Shown once intake is done. */}
