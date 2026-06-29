@@ -38,6 +38,16 @@ export const aiEnv = {
   get embeddingDimensions() {
     return Number(process.env.EMBEDDING_DIMENSIONS ?? "768");
   },
+
+  // ── Vertex AI (only required when AI_PROVIDER=vertex) ──
+  /** GCP project that owns the Vertex calls (billed to its credits). */
+  get vertexProject() {
+    return required("GOOGLE_CLOUD_PROJECT");
+  },
+  /** Vertex regional endpoint (model availability varies by region). */
+  get vertexLocation() {
+    return process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1";
+  },
 };
 
 export type ModelTier = "fast" | "quality";

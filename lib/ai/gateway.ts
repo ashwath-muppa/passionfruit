@@ -6,6 +6,7 @@
 import "server-only";
 import { aiEnv, modelForTier, type ModelTier } from "./env";
 import { geminiProvider } from "./providers/gemini";
+import { vertexProvider } from "./providers/vertex";
 import type {
   GenerateJSONParams,
   GenerateTextParams,
@@ -16,11 +17,13 @@ function selectProvider(): ModelProvider {
   switch (aiEnv.provider) {
     case "gemini":
       return geminiProvider;
+    case "vertex":
+      return vertexProvider;
     // TODO(seam): case "openai": return openaiProvider;
     // TODO(seam): case "anthropic": return anthropicProvider;
     default:
       throw new Error(
-        `Unknown AI_PROVIDER "${aiEnv.provider}". Supported: gemini.`,
+        `Unknown AI_PROVIDER "${aiEnv.provider}". Supported: gemini, vertex.`,
       );
   }
 }
