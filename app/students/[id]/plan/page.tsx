@@ -8,6 +8,13 @@ import { projectProgress } from "@/lib/ui";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { ProgressRing } from "@/components/ProgressRing";
 import { MilestoneList } from "@/components/MilestoneList";
+import { WeeklyFocusCard } from "@/components/WeeklyFocusCard";
+import { ActivationBanner } from "@/components/ActivationBanner";
+import { StreakBadges } from "@/components/StreakBadges";
+import { CheckInButton } from "@/components/CheckInButton";
+import { getCurrentFocus } from "@/lib/habit/loop";
+import { getActivation } from "@/lib/habit/activation";
+import { getEngagement } from "@/lib/engagement";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +40,13 @@ export default async function WeeklyPlanPage({
     (acc[r.milestoneId] ??= []).push(r);
     return acc;
   }, {});
+
+  // Retention: the weekly habit loop (#6), activation sprint (#6), streak + badges (#7).
+  const [focus, activation, engagement] = await Promise.all([
+    getCurrentFocus(id),
+    getActivation(id),
+    getEngagement(id),
+  ]);
 
   return (
     <main className="mx-auto min-h-screen max-w-[392px] px-4 py-8">
@@ -62,6 +76,19 @@ export default async function WeeklyPlanPage({
           </div>
         </div>
 
+        {!activation.firstWin && activation.dayOfSprint <= 7 && (
+          <div className="px-5 pt-4">
+            <ActivationBanner state={activation} />
+          </div>
+        )}
+
+        <div className="px-5 pb-1.5 pt-4">
+          <span className="eyebrow">This week with Sage</span>
+        </div>
+        <div className="px-5 pb-2">
+          <WeeklyFocusCard studentId={id} focus={focus} />
+        </div>
+
         <div className="px-5 pb-1.5 pt-4">
           <span className="eyebrow">Your milestones</span>
         </div>
@@ -70,6 +97,11 @@ export default async function WeeklyPlanPage({
             initial={project.milestones}
             resourcesByMilestone={resourcesByMilestone}
           />
+        </div>
+
+        <div className="flex flex-col gap-3 px-5 pb-6">
+          <CheckInButton studentId={id} />
+          <StreakBadges engagement={engagement} />
         </div>
       </PhoneFrame>
     </main>
