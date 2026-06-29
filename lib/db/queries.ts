@@ -6,23 +6,29 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import {
   constraints,
+  deliverables,
   goals,
   interests,
   milestones,
   observations,
   opportunities,
   projects,
+  projectTargets,
+  resources,
   skills,
   strengths,
   students,
 } from "./schema";
 import type {
   Constraint,
+  Deliverable,
   Goal,
   Interest,
   Milestone,
   Opportunity,
   Project,
+  ProjectTarget,
+  Resource,
   Skill,
   Strength,
   Student,
@@ -113,4 +119,37 @@ export async function getOpportunities(studentId: string): Promise<Opportunity[]
     .from(opportunities)
     .where(eq(opportunities.studentId, studentId))
     .orderBy(opportunities.createdAt);
+}
+
+export interface ActiveTarget {
+  target: ProjectTarget;
+  deliverable: Deliverable;
+}
+
+/** The student's current anchored real-world target (latest), with its deliverable. */
+export async function getActiveTarget(studentId: string): Promise<ActiveTarget | null> {
+  const [row] = await db
+    .select({ target: projectTargets, deliverable: deliverables })
+    .from(projectTargets)
+    .innerJoin(deliverables, eq(projectTargets.deliverableId, deliverables.id))
+    .where(eq(projectTargets.studentId, studentId))
+    .orderBy(desc(projectTargets.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+/** A single deliverable by slug (for resolving a chosen target). */
+export async function getDeliverableBySlug(slug: string): Promise<Deliverable | null> {
+  const [row] = await db.select().from(deliverables).where(eq(deliverables.slug, slug)).limit(1);
+  return row ?? null;
+}
+
+/** All cached resources across a project's milestones (for the weekly plan). */
+export async function getResourcesForProject(projectId: string): Promise<Resource[]> {
+  const rows = await db
+    .select({ resource: resources })
+    .from(resources)
+    .innerJoin(milestones, eq(resources.milestoneId, milestones.id))
+    .where(eq(milestones.projectId, projectId));
+  return rows.map((r) => r.resource);
 }

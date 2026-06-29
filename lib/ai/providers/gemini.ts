@@ -81,6 +81,27 @@ export const geminiProvider: ModelProvider = {
     return result.response.text();
   },
 
+  async generateGrounded(params: GenerateTextParams): Promise<string> {
+    const client = makeClient();
+    const model = client.getGenerativeModel({
+      model: params.model,
+      systemInstruction: params.system,
+      safetySettings,
+      // Google Search grounding → real, current, citeable results (Gemini 2.x).
+      tools: [{ googleSearch: {} }] as unknown as never,
+    });
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: params.user }] }],
+      generationConfig: {
+        temperature: params.temperature ?? 0.2,
+        maxOutputTokens: params.maxOutputTokens ?? 2048,
+      },
+    });
+    const blockReason = result.response.promptFeedback?.blockReason;
+    if (blockReason) throw new GeminiBlockedError(blockReason);
+    return result.response.text();
+  },
+
   async embed(model: string, text: string): Promise<number[]> {
     // Called via REST so we can pin outputDimensionality to match the pgvector
     // column width (gemini-embedding-001 defaults to 3072, which exceeds the

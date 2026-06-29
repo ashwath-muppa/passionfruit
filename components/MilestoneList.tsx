@@ -1,16 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import type { Milestone } from "@/lib/db/schema";
+import { useRouter } from "next/navigation";
+import type { Milestone, Resource } from "@/lib/db/schema";
 import { markerState, milestoneIcon, type MarkerState } from "@/lib/ui";
+import { ResourceChips } from "@/components/ResourceChips";
 
 type Status = "todo" | "doing" | "done";
 
 // Vertical milestone timeline (DESIGN.md §7b). Markers cycle status on click:
 // to-do → doing → done. Marker visual state is derived from status + position.
-export function MilestoneList({ initial }: { initial: Milestone[] }) {
+// resourcesByMilestone carries the cached Live Resource Finder chips (#2).
+export function MilestoneList({
+  initial,
+  resourcesByMilestone = {},
+}: {
+  initial: Milestone[];
+  resourcesByMilestone?: Record<string, Resource[]>;
+}) {
+  const router = useRouter();
   const [items, setItems] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
+  const [finding, setFinding] = useState<string | null>(null);
+
+  async function findResources(milestoneId: string) {
+    setFinding(milestoneId);
+    try {
+      const res = await fetch("/api/resources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ milestoneId }),
+      });
+      if (res.ok) router.refresh();
+    } finally {
+      setFinding(null);
+    }
+  }
 
   async function cycle(m: Milestone) {
     const next: Status = m.status === "todo" ? "doing" : m.status === "doing" ? "done" : "todo";
@@ -51,36 +76,49 @@ export function MilestoneList({ initial }: { initial: Milestone[] }) {
                 busy={busy === m.id}
                 onClick={() => cycle(m)}
               />
-              {state === "current" ? (
-                <div className="-mt-1 flex-1 rounded-2xl border border-passionfruit-accentLine bg-passionfruit-card p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-[.6px] text-passionfruit-accent">
-                    This week
+              <div className="min-w-0 flex-1">
+                {state === "current" ? (
+                  <div className="-mt-1 rounded-2xl border border-passionfruit-accentLine bg-passionfruit-card p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-[.6px] text-passionfruit-accent">
+                      This week
+                    </div>
+                    <div className="mt-0.5 text-[14px] font-bold text-passionfruit-ink">{m.title}</div>
+                    {(m.coach || m.detail) && (
+                      <p className="mt-1 text-[12px] leading-snug text-passionfruit-muted">
+                        {m.coach ?? m.detail}
+                      </p>
+                    )}
+                    <ResourceChips items={resourcesByMilestone[m.id] ?? []} />
                   </div>
-                  <div className="mt-0.5 text-[14px] font-bold text-passionfruit-ink">{m.title}</div>
-                  {(m.coach || m.detail) && (
-                    <p className="mt-1 text-[12px] leading-snug text-passionfruit-muted">
-                      {m.coach ?? m.detail}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="pt-1.5">
-                  <div
-                    className={`text-[14px] font-bold ${
-                      state === "upcoming" ? "text-[#B6A899]" : "text-passionfruit-ink"
-                    }`}
+                ) : (
+                  <div className="pt-1.5">
+                    <div
+                      className={`text-[14px] font-bold ${
+                        state === "upcoming" ? "text-[#B6A899]" : "text-passionfruit-ink"
+                      }`}
+                    >
+                      {m.title}
+                    </div>
+                    <div className="text-[12px] text-passionfruit-faint">
+                      {state === "done"
+                        ? `${m.source ? `${m.source} · ` : ""}done`
+                        : state === "final"
+                          ? "final deliverable"
+                          : m.dueHint ?? "upcoming"}
+                    </div>
+                    <ResourceChips items={resourcesByMilestone[m.id] ?? []} />
+                  </div>
+                )}
+                {(resourcesByMilestone[m.id]?.length ?? 0) === 0 && state !== "upcoming" && (
+                  <button
+                    onClick={() => findResources(m.id)}
+                    disabled={finding === m.id}
+                    className="mt-1.5 text-[11px] font-semibold text-passionfruit-accentInk hover:underline disabled:opacity-60"
                   >
-                    {m.title}
-                  </div>
-                  <div className="text-[12px] text-passionfruit-faint">
-                    {state === "done"
-                      ? `${m.source ? `${m.source} · ` : ""}done`
-                      : state === "final"
-                        ? "final deliverable"
-                        : m.dueHint ?? "upcoming"}
-                  </div>
-                </div>
-              )}
+                    {finding === m.id ? "Finding free resources…" : "+ find resources for this step"}
+                  </button>
+                )}
+              </div>
             </li>
           );
         })}

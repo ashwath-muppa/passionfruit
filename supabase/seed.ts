@@ -7,12 +7,16 @@
 //
 // Run: npm run seed   (loads .env.local via node --env-file)
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { eq } from "drizzle-orm";
 import postgres from "postgres";
 import {
   constraints,
+  deliverables,
   goals,
   interests,
   milestones,
@@ -20,10 +24,13 @@ import {
   opportunities,
   parents,
   projects,
+  projectTargets,
+  resources,
   skills,
   strengths,
   students,
 } from "../lib/db/schema";
+import type { CatalogEntry } from "../lib/deliverables/types";
 
 const DEMO_PARENT = {
   email: "demo.parent@example.com",
@@ -82,6 +89,15 @@ async function embed(text: string): Promise<number[] | null> {
   }
 }
 
+interface SeedResource {
+  kind: "course" | "program" | "portfolio" | "dataset" | "tool" | "competition" | "reading" | "other";
+  title: string;
+  provider: string;
+  url: string;
+  costNote: string;
+  summary: string;
+}
+
 interface SeedMilestone {
   weekNo: number;
   title: string;
@@ -92,12 +108,17 @@ interface SeedMilestone {
   icon: string;
   coach?: string;
   dueHint?: string;
+  resources?: SeedResource[];
 }
 
 interface Profile {
   name: string;
   age: number;
   grade: string;
+  // Parent-set end-goal direction (#10): the parent steers, the student's
+  // interests drive the "how".
+  endGoalPref?: string;
+  goalNote?: string;
   interests: { label: string; category: string; strength: number }[];
   strengths: { label: string; evidence: string }[];
   constraints: { kind: "time" | "budget" | "location" | "other"; value: string }[];
@@ -110,8 +131,49 @@ interface Profile {
     title: string;
     summary: string;
     status: "proposed" | "active" | "done";
+    // Slug of the catalog deliverable this project is anchored to (parent-approved).
+    targetSlug?: string;
     milestones: SeedMilestone[];
   };
+}
+
+// Ingest the vetted deliverables catalog (global, idempotent by slug).
+async function ingestDeliverables() {
+  const file = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../lib/deliverables/catalog.json",
+  );
+  const entries = JSON.parse(readFileSync(file, "utf8")) as CatalogEntry[];
+  for (const e of entries) {
+    const embedding = await embed(`${e.name}. ${e.domains.join(", ")}. ${e.a2cInsight ?? ""}`);
+    const row = {
+      slug: e.slug,
+      name: e.name,
+      category: e.category,
+      subtype: e.subtype ?? null,
+      domains: e.domains,
+      minGrade: e.minGrade ?? null,
+      msAccessible: e.msAccessible,
+      ageNote: e.ageNote ?? null,
+      difficulty: e.difficulty,
+      prestigeTier: e.prestigeTier,
+      prerequisites: e.prerequisites ?? null,
+      costBand: e.costBand,
+      costNote: e.costNote ?? null,
+      cadence: e.cadence ?? null,
+      howToStart: e.howToStart ?? null,
+      a2cInsight: e.a2cInsight ?? null,
+      status: e.status,
+      flags: e.flags,
+      url: e.url ?? null,
+      embedding,
+    };
+    await db
+      .insert(deliverables)
+      .values(row)
+      .onConflictDoUpdate({ target: deliverables.slug, set: row });
+  }
+  console.log(`  ✓ ${entries.length} deliverables ingested`);
 }
 
 const PROFILES: Profile[] = [
@@ -119,6 +181,8 @@ const PROFILES: Profile[] = [
     name: "Maya",
     age: 13,
     grade: "8",
+    endGoalPref: "research",
+    goalNote: "We'd love for Maya to aim at a real research project she's proud of.",
     interests: [
       { label: "Soccer", category: "sports", strength: 0.95 },
       { label: "Data & statistics", category: "stem", strength: 0.7 },
@@ -156,6 +220,7 @@ const PROFILES: Profile[] = [
       summary:
         "Break down the team's season with real stats — the way Maya already watches the game — and turn the numbers into a data story.",
       status: "active",
+      targetSlug: "thermo-fisher-jic",
       milestones: [
         {
           weekNo: 1,
@@ -165,6 +230,16 @@ const PROFILES: Profile[] = [
           kind: "Course",
           source: "Coursera",
           icon: "🐍",
+          resources: [
+            {
+              kind: "course",
+              title: "Python for Everybody",
+              provider: "Coursera (U. Michigan)",
+              url: "https://www.coursera.org/specializations/python",
+              costNote: "Free audit",
+              summary: "A gentle, well-loved intro to programming you can audit for free.",
+            },
+          ],
         },
         {
           weekNo: 2,
@@ -174,6 +249,16 @@ const PROFILES: Profile[] = [
           kind: "Dataset",
           source: "38 matches",
           icon: "📋",
+          resources: [
+            {
+              kind: "dataset",
+              title: "Kaggle Datasets",
+              provider: "Kaggle",
+              url: "https://www.kaggle.com/datasets",
+              costNote: "Free",
+              summary: "Thousands of open datasets to practice with (parental consent under 18).",
+            },
+          ],
         },
         {
           weekNo: 3,
@@ -183,6 +268,16 @@ const PROFILES: Profile[] = [
           kind: "Visualization",
           source: "Notebook",
           icon: "📊",
+          resources: [
+            {
+              kind: "tool",
+              title: "Google Colab",
+              provider: "Google",
+              url: "https://colab.research.google.com",
+              costNote: "Free",
+              summary: "A free, no-install Python notebook with charts — perfect for first analyses.",
+            },
+          ],
         },
         {
           weekNo: 4,
@@ -195,6 +290,24 @@ const PROFILES: Profile[] = [
           coach:
             "Start with one clear claim, then let the chart back it up. I'll read your first draft with you on Thursday →",
           dueHint: "by end of week 4",
+          resources: [
+            {
+              kind: "reading",
+              title: "Purdue OWL",
+              provider: "Purdue University",
+              url: "https://owl.purdue.edu",
+              costNote: "Free",
+              summary: "The standard free guide to citations and clear academic writing.",
+            },
+            {
+              kind: "tool",
+              title: "Datawrapper",
+              provider: "Datawrapper",
+              url: "https://www.datawrapper.de",
+              costNote: "Free tier",
+              summary: "Make clean, shareable charts to back up your argument.",
+            },
+          ],
         },
         {
           weekNo: 6,
@@ -325,6 +438,9 @@ async function main() {
   }
   const parentId = parent!.id;
 
+  // Ingest the vetted deliverables catalog (global; before students so targets resolve).
+  await ingestDeliverables();
+
   // Clean reseed: remove this parent's existing students (cascades the graph).
   await db.delete(students).where(eq(students.parentId, parentId));
 
@@ -339,6 +455,8 @@ async function main() {
         under13: p.age < 13,
         parentalConsent: true,
         consentAt: new Date(),
+        endGoalPref: p.endGoalPref ?? null,
+        goalNote: p.goalNote ?? null,
       })
       .returning();
     const studentId = student!.id;
@@ -410,18 +528,52 @@ async function main() {
         })
         .returning();
       for (const m of p.project.milestones) {
-        await db.insert(milestones).values({
-          projectId: project!.id,
-          weekNo: m.weekNo,
-          title: m.title,
-          detail: m.detail,
-          status: m.status,
-          kind: m.kind,
-          source: m.source,
-          icon: m.icon,
-          coach: m.coach ?? null,
-          dueHint: m.dueHint ?? null,
-        });
+        const [ms] = await db
+          .insert(milestones)
+          .values({
+            projectId: project!.id,
+            weekNo: m.weekNo,
+            title: m.title,
+            detail: m.detail,
+            status: m.status,
+            kind: m.kind,
+            source: m.source,
+            icon: m.icon,
+            coach: m.coach ?? null,
+            dueHint: m.dueHint ?? null,
+          })
+          .returning();
+        for (const r of m.resources ?? []) {
+          await db.insert(resources).values({
+            milestoneId: ms!.id,
+            studentId,
+            kind: r.kind,
+            title: r.title,
+            provider: r.provider,
+            url: r.url,
+            costNote: r.costNote,
+            summary: r.summary,
+            source: "curated",
+          });
+        }
+      }
+      // Anchor the project to its real-world target (parent-approved).
+      if (p.project.targetSlug) {
+        const [target] = await db
+          .select()
+          .from(deliverables)
+          .where(eq(deliverables.slug, p.project.targetSlug))
+          .limit(1);
+        if (target) {
+          await db.insert(projectTargets).values({
+            studentId,
+            projectId: project!.id,
+            deliverableId: target.id,
+            rationale: "A sports-analytics study is a legitimate science-fair project — a real first rung toward ISEF.",
+            status: "active",
+            parentApproved: true,
+          });
+        }
       }
     }
 

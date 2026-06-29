@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
 import {
   getActiveProject,
+  getActiveTarget,
   getLearnerGraphSnapshot,
   getOpportunities,
   getSkills,
@@ -13,9 +14,15 @@ import { SkillsPlanner } from "@/components/SkillsPlanner";
 import { ParentSummaryCard } from "@/components/ParentSummaryCard";
 import { ProjectTimelineRail } from "@/components/ProjectTimelineRail";
 import { UpNext } from "@/components/UpNext";
+import { ParentTargetControl } from "@/components/ParentTargetControl";
+import { IntersectionCard } from "@/components/IntersectionCard";
+import { CalendarActions } from "@/components/CalendarActions";
+import { SpikeLadder } from "@/components/SpikeLadder";
 import { StudentAvatar } from "@/components/StudentAvatar";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
+import { pickLadder } from "@/lib/deliverables/ladders";
+import { inferDomains } from "@/lib/deliverables/match";
 
 export const dynamic = "force-dynamic";
 
@@ -34,17 +41,28 @@ export default async function StudentDashboard({
   const student = await getOwnedStudent(id);
   if (!student) notFound();
 
-  const [graph, project, skills, opportunities] = await Promise.all([
+  const [graph, project, skills, opportunities, target] = await Promise.all([
     getLearnerGraphSnapshot(id),
     getActiveProject(id),
     getSkills(id),
     getOpportunities(id),
+    getActiveTarget(id),
   ]);
 
   const firstName = student.name.split(" ")[0] ?? student.name;
   const hasGraph = !!graph && graph.interests.length > 0;
   const period = `${MONTHS[new Date().getMonth()]} summary`;
   const prog = project ? projectProgress(project.milestones) : null;
+
+  // The spike ladder this student's target sits on (#3) — the moat made visible.
+  const gradeNum = student.grade ? parseInt(student.grade, 10) : null;
+  const ladder = hasGraph
+    ? pickLadder({
+        domains: inferDomains(graph!),
+        targetSlug: target?.deliverable.slug ?? null,
+        grade: Number.isFinite(gradeNum) ? gradeNum : null,
+      })
+    : null;
 
   return (
     <div className="min-h-screen">
@@ -117,6 +135,10 @@ export default async function StudentDashboard({
                 </div>
               )}
 
+              {ladder && (
+                <SpikeLadder ladder={ladder.ladder} currentRungIndex={ladder.currentRungIndex} />
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 {project ? (
                   <ProjectTimelineRail
@@ -153,6 +175,8 @@ export default async function StudentDashboard({
                 <UpNext opportunities={opportunities} />
               </div>
 
+              <CalendarActions studentId={id} />
+
               {project && (
                 <div className="flex flex-wrap items-center gap-2 px-1">
                   <span className="pill-accent">{PATH_TYPE_LABELS[project.project.pathType]}</span>
@@ -170,6 +194,29 @@ export default async function StudentDashboard({
                   </Link>
                 </div>
               )}
+
+              {/* Parent north-star: the family steers the end-goal; Sage maps the
+                  route from the student's interests (#10). Shown once intake is done. */}
+              {hasGraph && (
+                <ParentTargetControl
+                  studentId={id}
+                  studentName={firstName}
+                  initialPref={student.endGoalPref}
+                  activeTarget={
+                    target
+                      ? {
+                          deliverable: { ...target.deliverable, embedding: null },
+                          rationale: target.target.rationale,
+                          approved: target.target.parentApproved,
+                        }
+                      : null
+                  }
+                />
+              )}
+
+              {/* Signature theme (#10): fuse the student's interests into one
+                  ownable direction aimed at the family's chosen end-goal. */}
+              {hasGraph && <IntersectionCard studentId={id} studentName={firstName} />}
             </div>
           </div>
         </div>

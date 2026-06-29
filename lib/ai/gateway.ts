@@ -44,6 +44,11 @@ export function generateJSON(req: JSONRequest): Promise<string> {
   return provider.generateJSON({ ...req, model: modelForTier(req.tier) });
 }
 
+/** Web-grounded generation (real, current sources). Caller parses the result. */
+export function generateGrounded(req: TextRequest): Promise<string> {
+  return provider.generateGrounded({ ...req, model: modelForTier(req.tier) });
+}
+
 /** Embed text for semantic recall. Used by lib/db/retrieval.ts. */
 export function embedText(text: string): Promise<number[]> {
   return provider.embed(aiEnv.embeddingModel, text);
