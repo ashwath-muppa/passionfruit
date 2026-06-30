@@ -1,7 +1,7 @@
 "use client";
 
-// Real Artifact Pipeline (#5): the "add a piece" card. A kid drops in a file
-// (image / PDF / doc) OR pastes a link, names it, and it lands on the portfolio.
+// Running Resume: the "add a piece" card. A kid drops in a file (image / PDF /
+// doc) OR pastes a link, names it, and it lands on their running resume.
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -95,7 +95,7 @@ export function ArtifactUpload({
     <div className="card-sheet">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <span className="eyebrow">Add to portfolio</span>
+          <span className="eyebrow">Add to your resume</span>
           <h3 className="font-display text-[16px] font-semibold leading-tight text-passionfruit-ink">
             Put your finished work here
           </h3>
@@ -202,7 +202,7 @@ export function ArtifactUpload({
 
         <div className="flex items-center gap-3">
           <button type="submit" disabled={busy} className="btn-primary text-sm">
-            {busy ? "Uploading…" : "Add to portfolio"}
+            {busy ? "Uploading…" : "Add to resume"}
           </button>
           <span className="text-[11px] text-passionfruit-faint">
             Images, PDFs, docs, or a link · up to 10 MB

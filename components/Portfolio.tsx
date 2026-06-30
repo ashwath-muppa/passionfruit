@@ -1,9 +1,10 @@
 "use client";
 
-// Real Artifact Pipeline (#5): the growing wall of a student's real work — the
+// Running Resume: the growing record of a student's real accomplishments — the
 // proof a parent can see and share. Image artifacts render as thumbnails; links
-// and docs as cards. Each piece can be flipped public, revealing a copyable
-// /p/{slug} link.
+// and docs as cards. Deliverables earned from a completed checkpoint carry a
+// "From a checkpoint" chip. Each piece can be flipped public, revealing a
+// copyable /p/{slug} link.
 
 import { useState } from "react";
 import type { Artifact } from "@/lib/db/schema";
@@ -33,24 +34,41 @@ export function Portfolio({
   artifacts: Artifact[];
   canShare?: boolean;
 }) {
-  if (artifacts.length === 0) {
-    return (
-      <div className="card-sheet flex min-h-[160px] flex-col items-center justify-center text-center">
-        <span className="text-2xl" aria-hidden>
-          🌱
-        </span>
-        <p className="mt-2 max-w-xs text-[13px] text-passionfruit-muted">
-          No work uploaded yet — add the first piece.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {artifacts.map((a) => (
-        <PortfolioCard key={a.id} studentId={studentId} artifact={a} canShare={canShare} />
-      ))}
+    <div className="flex flex-col gap-5">
+      <WhyThisHelps />
+
+      {artifacts.length === 0 ? (
+        <div className="card-sheet flex min-h-[160px] flex-col items-center justify-center text-center">
+          <span className="text-2xl" aria-hidden>
+            🌱
+          </span>
+          <p className="mt-2 max-w-xs text-[13px] text-passionfruit-muted">
+            Nothing on your resume yet — add the first piece, or finish a checkpoint and
+            its deliverable lands here automatically.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {artifacts.map((a) => (
+            <PortfolioCard key={a.id} studentId={studentId} artifact={a} canShare={canShare} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WhyThisHelps() {
+  return (
+    <div className="rounded-sheet border border-passionfruit-accentLine bg-passionfruit-wash p-4">
+      <span className="eyebrow text-passionfruit-accentInk">Why this helps</span>
+      <p className="mt-1 text-[13px] leading-[1.5] text-passionfruit-body">
+        This is your growing record of real accomplishments. Anything you finish from a
+        checkpoint shows up here on its own — handy later for a{" "}
+        <span className="text-passionfruit-accentInk">LinkedIn profile</span> or just to show
+        anyone what you&apos;ve actually built.
+      </p>
     </div>
   );
 }
@@ -133,6 +151,12 @@ function PortfolioCard({
         </h3>
         <span className="pill shrink-0">{kindLabel(artifact.kind)}</span>
       </div>
+
+      {artifact.milestoneId && (
+        <span className="pill-accent w-fit" title="Earned by completing a checkpoint">
+          ✓ From a checkpoint
+        </span>
+      )}
 
       {artifact.text && artifact.text !== artifact.title && (
         <p className="text-[12px] leading-[1.5] text-passionfruit-muted">{artifact.text}</p>

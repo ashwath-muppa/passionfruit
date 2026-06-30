@@ -7,6 +7,7 @@
 import { useState } from "react";
 import type { Milestone } from "@/lib/db/schema";
 import { ProgressRing } from "@/components/ProgressRing";
+import { CheckpointDetail } from "@/components/CheckpointDetail";
 import { markerState, milestoneIcon, milestoneKind, projectProgress, type MarkerState } from "@/lib/ui";
 
 const ACCENT = "#E8694A";
@@ -15,11 +16,13 @@ const DEEP = "#D4533A";
 export function ProjectTimelineBoard({
   title,
   studentName,
+  studentId,
   deliverable,
   milestones,
 }: {
   title: string;
   studentName: string;
+  studentId: string;
   deliverable: string;
   milestones: Milestone[];
 }) {
@@ -28,6 +31,9 @@ export function ProjectTimelineBoard({
   const [selectedId, setSelectedId] = useState<string>(
     milestones[prog.currentIndex]?.id ?? milestones[0]?.id ?? "",
   );
+  // Which milestone's full-screen checkpoint detail is open (double-click).
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openMilestone = openId ? milestones.find((m) => m.id === openId) ?? null : null;
 
   const states: MarkerState[] = milestones.map((m, i) => markerState(m, i, prog.currentIndex, total));
   const selIndex = Math.max(0, milestones.findIndex((m) => m.id === selectedId));
@@ -69,7 +75,9 @@ export function ProjectTimelineBoard({
         <Legend swatch={<span className="h-3.5 w-3.5 rounded-[4px]" style={{ background: ACCENT }} />} label="Completed" />
         <Legend swatch={<span className="h-3.5 w-3.5 rounded-[4px] border-[2.5px] bg-white" style={{ borderColor: ACCENT }} />} label="This week" />
         <Legend swatch={<span className="h-3.5 w-3.5 rounded-[4px] border border-passionfruit-line bg-passionfruit-sunk" />} label="Upcoming" />
-        <span className="text-[11.5px] text-passionfruit-faint">— tap any milestone to see the deliverable</span>
+        <span className="text-[11.5px] text-passionfruit-faint">
+          — tap a milestone to preview · <b className="text-passionfruit-muted">double-click</b> to open the full checkpoint
+        </span>
       </div>
 
       {/* timeline band */}
@@ -90,8 +98,10 @@ export function ProjectTimelineBoard({
                 key={m.id}
                 type="button"
                 onClick={() => setSelectedId(m.id)}
+                onDoubleClick={() => setOpenId(m.id)}
                 className="relative flex-1"
-                aria-label={`Week ${m.weekNo}: ${m.title}`}
+                title="Double-click to open this checkpoint"
+                aria-label={`Week ${m.weekNo}: ${m.title}. Double-click to open the full checkpoint.`}
               >
                 {/* cap label */}
                 <div
@@ -185,9 +195,26 @@ export function ProjectTimelineBoard({
             <span className="text-[11px] text-passionfruit-faint">
               {selIndex + 1} of {total}
             </span>
+            <button
+              type="button"
+              onClick={() => setOpenId(sel.id)}
+              className="btn-soft text-[12px]"
+            >
+              Open checkpoint
+            </button>
           </div>
         </div>
       </div>
+
+      {/* full-screen checkpoint detail (double-click) */}
+      {openMilestone && (
+        <CheckpointDetail
+          milestoneId={openMilestone.id}
+          studentId={studentId}
+          title={openMilestone.title}
+          onClose={() => setOpenId(null)}
+        />
+      )}
     </div>
   );
 }

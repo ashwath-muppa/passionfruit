@@ -109,6 +109,10 @@ interface SeedMilestone {
   icon: string;
   coach?: string;
   dueHint?: string;
+  // Functional-checkpoint type hint (course | build | creative | research) so
+  // the timeline shows variety immediately; the rich detail is still generated
+  // lazily on first open. Null = inferred at generation time.
+  checkpointType?: "course" | "build" | "creative" | "research";
   resources?: SeedResource[];
 }
 
@@ -231,6 +235,7 @@ const PROFILES: Profile[] = [
           kind: "Course",
           source: "Coursera",
           icon: "🐍",
+          checkpointType: "course",
           resources: [
             {
               kind: "course",
@@ -244,12 +249,13 @@ const PROFILES: Profile[] = [
         },
         {
           weekNo: 2,
-          title: "Collect the season data",
-          detail: "Log every match — scores, dates, opponents — into one clean, tidy dataset.",
+          title: "Build a Kaggle score-prediction model",
+          detail: "Collect the season data and train a first model that predicts match scores — then push it to GitHub.",
           status: "done",
-          kind: "Dataset",
-          source: "38 matches",
+          kind: "Build",
+          source: "Kaggle → GitHub",
           icon: "📋",
+          checkpointType: "build",
           resources: [
             {
               kind: "dataset",
@@ -269,6 +275,7 @@ const PROFILES: Profile[] = [
           kind: "Visualization",
           source: "Notebook",
           icon: "📊",
+          checkpointType: "build",
           resources: [
             {
               kind: "tool",
@@ -282,14 +289,15 @@ const PROFILES: Profile[] = [
         },
         {
           weekNo: 4,
-          title: "Write the streak analysis",
-          detail: "Turn the numbers into an argument: what actually drives a winning streak, backed by your own data.",
+          title: "Brainstorm your research question",
+          detail: "Turn your curiosity into one sharp, answerable research question about what drives a winning streak.",
           status: "doing",
-          kind: "Analysis",
-          source: "Draft",
-          icon: "✍️",
+          kind: "Research",
+          source: "Research Accelerator",
+          icon: "🔬",
+          checkpointType: "research",
           coach:
-            "Start with one clear claim, then let the chart back it up. I'll read your first draft with you on Thursday →",
+            "A great question is specific and answerable with your own data. Let's narrow it together on Thursday →",
           dueHint: "by end of week 4",
           resources: [
             {
@@ -312,21 +320,23 @@ const PROFILES: Profile[] = [
         },
         {
           weekNo: 6,
-          title: "Build the interactive dashboard",
-          detail: "Package the analysis into a small interactive dashboard your teammates can click through.",
+          title: "Run a literature review",
+          detail: "Find what's already known about momentum and winning streaks, and gather your annotated sources.",
           status: "todo",
-          kind: "Shipped app",
-          source: "Web app",
-          icon: "🧮",
+          kind: "Research",
+          source: "Research Accelerator",
+          icon: "📚",
+          checkpointType: "research",
         },
         {
           weekNo: 8,
-          title: "Publish & share your story",
-          detail: "Ship the finished data story — chart, analysis, and dashboard — and share it with the team.",
+          title: "Write & submit your research paper",
+          detail: "Bring your question, data, and sources together into a real paper — and submit it to a portfolio or journal.",
           status: "todo",
-          kind: "Published story",
-          source: "Published",
+          kind: "Research",
+          source: "Research Accelerator",
           icon: "🏁",
+          checkpointType: "research",
         },
       ],
     },
@@ -573,6 +583,7 @@ async function main() {
             icon: m.icon,
             coach: m.coach ?? null,
             dueHint: m.dueHint ?? null,
+            checkpointType: m.checkpointType ?? null,
           })
           .returning();
         for (const r of m.resources ?? []) {

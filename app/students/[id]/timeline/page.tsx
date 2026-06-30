@@ -32,6 +32,7 @@ export default async function TimelinePage({
           <ProjectTimelineBoard
             title={project.project.title}
             studentName={student.name}
+            studentId={id}
             deliverable={PATH_TYPE_LABELS[project.project.pathType]}
             milestones={project.milestones}
           />

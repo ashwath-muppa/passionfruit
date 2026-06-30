@@ -218,7 +218,7 @@ export default async function StudentDashboard({
 
               {/* Real Artifact Pipeline (#5): the wall of finished work to see + share. */}
               <div className="flex flex-wrap items-center gap-2 px-1">
-                <span className="pill">Portfolio</span>
+                <span className="pill">Running Resume</span>
                 <span className="text-[13px] text-passionfruit-muted">
                   {firstName}&apos;s real, finished work
                 </span>
@@ -226,7 +226,7 @@ export default async function StudentDashboard({
                   href={`/students/${id}/portfolio`}
                   className="ml-auto text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
                 >
-                  Open portfolio →
+                  Open running resume →
                 </Link>
               </div>
 

@@ -1,5 +1,6 @@
-// Real Artifact Pipeline (#5): the student's portfolio page — upload real work
-// and watch the wall of proof grow. Parent-owned; share toggles live here.
+// Running Resume: the student's growing record of real accomplishments — upload
+// work and watch completed-checkpoint deliverables collect here automatically.
+// Route stays /portfolio. Parent-owned; share toggles live here.
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -43,12 +44,12 @@ export default async function PortfolioPage({
 
         <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <span className="eyebrow">Portfolio</span>
+            <span className="eyebrow">Running Resume</span>
             <h1 className="font-display text-[26px] font-semibold leading-tight text-passionfruit-ink">
-              {firstName}&apos;s portfolio
+              {firstName}&apos;s running resume
             </h1>
             <p className="mt-1 text-[13px] text-passionfruit-muted">
-              Real, finished work — the proof you can see and share.
+              Every accomplishment in one place — real, finished work you can see and share.
             </p>
           </div>
           {artifacts.length > 0 && (
