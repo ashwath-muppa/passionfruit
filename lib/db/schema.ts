@@ -20,7 +20,13 @@ import {
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
-import type { ProjectPathCandidate, ModerationResult } from "../types";
+import type {
+  ProjectPathCandidate,
+  ModerationResult,
+  CheckpointResource,
+  CheckpointStep,
+  ResearchState,
+} from "../types";
 
 // Embedding width. MUST match EMBEDDING_MODEL output (Gemini text-embedding-004
 // = 768). Changing this requires a migration (pgvector columns are fixed-width).
@@ -139,6 +145,27 @@ export const checkpointStatus = pgEnum("checkpoint_status", [
   "scheduled",
   "completed",
   "cancelled",
+]);
+
+// Functional checkpoints — a milestone leveled up into a mini-curriculum.
+export const checkpointType = pgEnum("checkpoint_type", [
+  "course",
+  "build",
+  "creative",
+  "research",
+]);
+export const checkpointDifficulty = pgEnum("checkpoint_difficulty", [
+  "beginner",
+  "intermediate",
+  "advanced",
+]);
+export const deliverableKind = pgEnum("deliverable_kind", [
+  "certificate",
+  "repo",
+  "image",
+  "paper",
+  "link",
+  "other",
 ]);
 
 // ── Accounts: parent is the account holder (COPPA / parent-mediated). ──
@@ -281,7 +308,35 @@ export const milestones = pgTable("milestones", {
   source: text("source"), // resource line, e.g. "Coursera", "38 matches"
   icon: text("icon"), // emoji marker
   coach: text("coach"), // mentor coaching note (shown on the current week)
+  // Functional-checkpoint type. Nullable; inferred when the rich detail is
+  // generated lazily on first open. Drives which detail treatment renders.
+  checkpointType: checkpointType("checkpoint_type"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── Checkpoint detail: the lazily-generated mini-curriculum for a milestone.
+//    One row per milestone, created on first open and cached (regenerate by
+//    deleting the row). Personalized to the student's learner graph. ──
+export const checkpointDetails = pgTable("checkpoint_details", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  milestoneId: uuid("milestone_id")
+    .notNull()
+    .unique()
+    .references(() => milestones.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  type: checkpointType("type").notNull(),
+  difficulty: checkpointDifficulty("difficulty").notNull(),
+  description: text("description").notNull(),
+  resources: jsonb("resources").$type<CheckpointResource[]>().notNull().default([]),
+  steps: jsonb("steps").$type<CheckpointStep[]>().notNull().default([]),
+  deliverableKind: deliverableKind("deliverable_kind").notNull(),
+  deliverableSpec: text("deliverable_spec").notNull(),
+  // Research-accelerator working state (only for type = "research").
+  research: jsonb("research").$type<ResearchState>(),
+  model: text("model"),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // ── Skills planner (parent dashboard): categorical progress bars. ──
@@ -467,6 +522,8 @@ export const artifacts = pgTable("artifacts", {
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
   // Direct owner link for the portfolio + share surfaces (#5).
   studentId: uuid("student_id").references(() => students.id, { onDelete: "cascade" }),
+  // The checkpoint whose deliverable this artifact is (Running Resume flow).
+  milestoneId: uuid("milestone_id").references(() => milestones.id, { onDelete: "set null" }),
   kind: text("kind").notNull(),
   title: text("title").notNull(),
   text: text("text"),
@@ -524,6 +581,7 @@ export type Observation = typeof observations.$inferSelect;
 export type ProjectPathRow = typeof projectPaths.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Milestone = typeof milestones.$inferSelect;
+export type CheckpointDetailRow = typeof checkpointDetails.$inferSelect;
 export type Skill = typeof skills.$inferSelect;
 export type Opportunity = typeof opportunities.$inferSelect;
 export type Deliverable = typeof deliverables.$inferSelect;

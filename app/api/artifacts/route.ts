@@ -39,6 +39,10 @@ export async function POST(req: Request) {
     const projectIdRaw = form.get("projectId");
     const projectId =
       typeof projectIdRaw === "string" && projectIdRaw.length > 0 ? projectIdRaw : null;
+    // Optional: the checkpoint whose deliverable this is (Running Resume flow).
+    const milestoneIdRaw = form.get("milestoneId");
+    const milestoneId =
+      typeof milestoneIdRaw === "string" && milestoneIdRaw.length > 0 ? milestoneIdRaw : null;
 
     const fileEntry = form.get("file");
     const linkRaw = form.get("linkUrl");
@@ -53,6 +57,7 @@ export async function POST(req: Request) {
       const artifact = await uploadArtifact({
         studentId: owned.student.id,
         projectId,
+        milestoneId,
         title,
         kind,
         file: {
@@ -70,6 +75,7 @@ export async function POST(req: Request) {
       const artifact = await addLinkArtifact({
         studentId: owned.student.id,
         projectId,
+        milestoneId,
         title,
         kind: kind === "image" || kind === "document" ? "link" : kind,
         url: parsed.data,

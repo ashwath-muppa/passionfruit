@@ -68,6 +68,8 @@ async function captionFor(title: string, kind: string): Promise<string> {
 export async function uploadArtifact(input: {
   studentId: string;
   projectId?: string | null;
+  /** The checkpoint this deliverable completes (Running Resume flow). */
+  milestoneId?: string | null;
   title: string;
   kind: string;
   file: { bytes: ArrayBuffer | Uint8Array; name: string; type: string };
@@ -97,6 +99,7 @@ export async function uploadArtifact(input: {
     .values({
       studentId: input.studentId,
       projectId: input.projectId ?? null,
+      milestoneId: input.milestoneId ?? null,
       kind: input.kind,
       title: input.title,
       text: caption,
@@ -116,6 +119,8 @@ export async function uploadArtifact(input: {
 export async function addLinkArtifact(input: {
   studentId: string;
   projectId?: string | null;
+  /** The checkpoint this deliverable completes (Running Resume flow). */
+  milestoneId?: string | null;
   title: string;
   kind: string;
   url: string;
@@ -126,6 +131,7 @@ export async function addLinkArtifact(input: {
     .values({
       studentId: input.studentId,
       projectId: input.projectId ?? null,
+      milestoneId: input.milestoneId ?? null,
       kind: input.kind,
       title: input.title,
       text: caption,

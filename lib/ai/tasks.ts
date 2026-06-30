@@ -5,7 +5,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { generateJSON, generateText, activeModels } from "./gateway";
+import { generateJSON, generateText, generateGrounded, activeModels } from "./gateway";
 import type { ModelTier } from "./env";
 import { db } from "@/lib/db/client";
 import { aiInteractions } from "@/lib/db/schema";
@@ -16,12 +16,14 @@ import { semanticRecall } from "@/lib/db/retrieval";
 import type { AiInteraction } from "@/lib/db/schema";
 import type {
   ChatMessage,
+  CheckpointDetail,
   IntakeExtraction,
   ParentSummary,
   ProjectPathCandidate,
   WeeklyStep,
 } from "@/lib/types";
-import { PATH_TYPES } from "@/lib/types";
+import { PATH_TYPES, CHECKPOINT_TYPES } from "@/lib/types";
+import type { Milestone, Project } from "@/lib/db/schema";
 import {
   INTAKE_COMPLETE_TOKEN,
   intakeExtractionPrompt,
@@ -30,6 +32,11 @@ import {
 import { pathsPrompt } from "./prompts/paths";
 import { planPrompt } from "./prompts/plan";
 import { parentSummaryPrompt } from "./prompts/parentSummary";
+import {
+  checkpointResourcesPrompt,
+  checkpointDetailPrompt,
+  checkpointResponseSchema,
+} from "./prompts/checkpoints";
 
 type AiTaskName = AiInteraction["task"];
 
@@ -139,6 +146,19 @@ async function auditedJSON<T>(call: AuditedCall, schema: z.ZodType<T>): Promise<
     }),
   );
   return schema.parse(JSON.parse(raw));
+}
+
+/** Web-grounded generation, audited + moderated (real, current sources). */
+function auditedGrounded(call: AuditedCall): Promise<string> {
+  return runAudited(call, () =>
+    generateGrounded({
+      tier: call.tier,
+      system: call.system,
+      user: call.user,
+      maxOutputTokens: call.maxOutputTokens,
+      temperature: call.temperature ?? 0.2,
+    }),
+  );
 }
 
 // ── Zod schemas for structured outputs ──
@@ -445,4 +465,100 @@ export async function generateParentSummary(args: {
     },
     parentSummarySchema,
   );
+}
+
+// ── Functional checkpoint detail (lazy, grounded, personalized) ──
+const checkpointSchema: z.ZodType<CheckpointDetail> = z.object({
+  type: z.enum(CHECKPOINT_TYPES),
+  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+  description: z.string(),
+  resources: z.array(
+    z.object({
+      title: z.string(),
+      provider: z.string(),
+      url: z.string(),
+      kind: z.enum(["course", "video", "dataset", "tool", "reading", "other"]),
+      note: z.string(),
+    }),
+  ),
+  steps: z.array(
+    z.object({
+      title: z.string(),
+      detail: z.string(),
+      resourceUrl: z.string().optional(),
+    }),
+  ),
+  deliverableKind: z.enum(["certificate", "repo", "image", "paper", "link", "other"]),
+  deliverableSpec: z.string(),
+  research: z
+    .object({
+      question: z.string().nullable(),
+      sources: z.array(
+        z.object({ title: z.string(), url: z.string().optional(), note: z.string().optional() }),
+      ),
+      outline: z.array(z.string()),
+    })
+    .optional(),
+});
+
+/**
+ * Build the full mini-curriculum for one checkpoint: web-grounded REAL resources
+ * → structured detail (rationale, difficulty, step-by-step guide, deliverable),
+ * personalized to the learner graph. Called lazily on first open and cached.
+ */
+export async function generateCheckpointDetail(args: {
+  studentId: string;
+  milestone: Milestone;
+  project: Project | null;
+  endGoalPref: string | null;
+}): Promise<CheckpointDetail> {
+  const graph = await getLearnerGraphSnapshot(args.studentId);
+  if (!graph) throw new Error("Student not found");
+
+  const ctx = {
+    graph,
+    milestone: args.milestone,
+    project: args.project,
+    endGoalPref: args.endGoalPref,
+  };
+
+  // 1) Grounded gather of real, free resources. Degrade gracefully — if the
+  //    grounded call fails (quota/no tool), compose from the model's knowledge.
+  let resourcesText = "";
+  try {
+    const rp = checkpointResourcesPrompt(ctx);
+    resourcesText = await auditedGrounded({
+      task: "plan_steps",
+      tier: "quality",
+      system: rp.system,
+      user: rp.user,
+      studentId: args.studentId,
+      maxOutputTokens: 1200,
+      temperature: 0.2,
+    });
+  } catch {
+    resourcesText = "(no grounded results — use well-known free resources you are confident exist)";
+  }
+
+  // 2) Compose the structured detail.
+  const dp = checkpointDetailPrompt(ctx, resourcesText);
+  const detail = await auditedJSON(
+    {
+      task: "plan_steps",
+      tier: "quality",
+      system: dp.system,
+      user: dp.user,
+      studentId: args.studentId,
+      maxOutputTokens: 4000,
+      temperature: 0.5,
+      jsonSchema: checkpointResponseSchema,
+    },
+    checkpointSchema,
+  );
+
+  // Ensure research checkpoints carry an (empty) working state to start.
+  if (detail.type === "research" && !detail.research) {
+    detail.research = { question: null, sources: [], outline: [] };
+  }
+  return detail;
 }

@@ -6,6 +6,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import {
+  checkpointDetails,
   constraints,
   goals,
   interests,
@@ -18,10 +19,12 @@ import {
 } from "./schema";
 import { embedText } from "@/lib/ai/gateway";
 import type {
+  CheckpointDetail,
   IntakeExtraction,
   ProjectPathCandidate,
   WeeklyStep,
 } from "@/lib/types";
+import type { CheckpointDetailRow } from "./schema";
 
 /**
  * Fold an intake extraction into the graph. Interests are upserted by label
@@ -191,4 +194,56 @@ export async function createProjectFromPath(
   });
 
   return projectId;
+}
+
+/**
+ * Cache a generated checkpoint detail (one row per milestone) and stamp the
+ * milestone's checkpoint_type. Upsert so "regenerate" replaces cleanly.
+ */
+export async function saveCheckpointDetail(args: {
+  milestoneId: string;
+  studentId: string;
+  detail: CheckpointDetail;
+  model: string | null;
+}): Promise<CheckpointDetailRow> {
+  const { milestoneId, studentId, detail, model } = args;
+  const values = {
+    milestoneId,
+    studentId,
+    type: detail.type,
+    difficulty: detail.difficulty,
+    description: detail.description,
+    resources: detail.resources,
+    steps: detail.steps,
+    deliverableKind: detail.deliverableKind,
+    deliverableSpec: detail.deliverableSpec,
+    research: detail.research ?? null,
+    model,
+    generatedAt: new Date(),
+  };
+
+  const [row] = await db
+    .insert(checkpointDetails)
+    .values(values)
+    .onConflictDoUpdate({ target: checkpointDetails.milestoneId, set: values })
+    .returning();
+
+  // Reflect the inferred type on the milestone for the timeline treatment.
+  await db
+    .update(milestones)
+    .set({ checkpointType: detail.type })
+    .where(eq(milestones.id, milestoneId));
+
+  return row!;
+}
+
+/** Persist edited research-accelerator working state on a checkpoint. */
+export async function saveResearchState(
+  milestoneId: string,
+  research: CheckpointDetail["research"],
+): Promise<void> {
+  await db
+    .update(checkpointDetails)
+    .set({ research: research ?? null })
+    .where(eq(checkpointDetails.milestoneId, milestoneId));
 }

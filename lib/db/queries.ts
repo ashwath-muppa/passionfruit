@@ -5,6 +5,7 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client";
 import {
+  checkpointDetails,
   constraints,
   deliverables,
   goals,
@@ -20,6 +21,7 @@ import {
   students,
 } from "./schema";
 import type {
+  CheckpointDetailRow,
   Constraint,
   Deliverable,
   Goal,
@@ -152,4 +154,38 @@ export async function getResourcesForProject(projectId: string): Promise<Resourc
     .innerJoin(milestones, eq(resources.milestoneId, milestones.id))
     .where(eq(milestones.projectId, projectId));
   return rows.map((r) => r.resource);
+}
+
+// ── Functional checkpoints ──
+
+export interface MilestoneContext {
+  milestone: Milestone;
+  project: Project;
+  student: Student;
+}
+
+/** A milestone with its project + owning student (for ownership + generation). */
+export async function getMilestoneContext(
+  milestoneId: string,
+): Promise<MilestoneContext | null> {
+  const [row] = await db
+    .select({ milestone: milestones, project: projects, student: students })
+    .from(milestones)
+    .innerJoin(projects, eq(milestones.projectId, projects.id))
+    .innerJoin(students, eq(projects.studentId, students.id))
+    .where(eq(milestones.id, milestoneId))
+    .limit(1);
+  return row ?? null;
+}
+
+/** The cached checkpoint detail for a milestone, or null if not generated yet. */
+export async function getCheckpointDetail(
+  milestoneId: string,
+): Promise<CheckpointDetailRow | null> {
+  const [row] = await db
+    .select()
+    .from(checkpointDetails)
+    .where(eq(checkpointDetails.milestoneId, milestoneId))
+    .limit(1);
+  return row ?? null;
 }
