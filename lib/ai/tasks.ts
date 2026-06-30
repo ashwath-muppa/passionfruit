@@ -37,6 +37,7 @@ import {
   checkpointDetailPrompt,
   checkpointResponseSchema,
 } from "./prompts/checkpoints";
+import { repairDetailLinks } from "@/lib/links/verify";
 
 type AiTaskName = AiInteraction["task"];
 
@@ -560,5 +561,12 @@ export async function generateCheckpointDetail(args: {
   if (detail.type === "research" && !detail.research) {
     detail.research = { question: null, sources: [], outline: [] };
   }
-  return detail;
+
+  // Link safeguard: verify every link and swap any dead one for a working
+  // resolver, so the cached-forever detail only ever stores links that work.
+  const { detail: verified, replaced } = await repairDetailLinks(detail);
+  if (replaced > 0) {
+    console.log(`[checkpoint] replaced ${replaced} dead link(s) for milestone ${args.milestone.id}`);
+  }
+  return verified;
 }
