@@ -184,6 +184,9 @@ export const students = pgTable("students", {
   parentId: uuid("parent_id")
     .notNull()
     .references(() => parents.id, { onDelete: "cascade" }),
+  // A student's own auth account (created by the parent). FK to auth.users is in
+  // the SQL migration. Null = no student login yet (operates under the parent).
+  authUserId: uuid("auth_user_id").unique(),
   name: text("name").notNull(),
   age: integer("age"),
   grade: text("grade"),

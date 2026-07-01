@@ -32,12 +32,16 @@ import {
   students,
 } from "../lib/db/schema";
 import type { CatalogEntry } from "../lib/deliverables/types";
+import { studentUsernameToEmail } from "../lib/auth/student-identity";
 
 const DEMO_PARENT = {
   email: "demo.parent@example.com",
   password: "password123",
   name: "Demo Parent",
 };
+
+// Demo student logins share one password; username = first name, lowercased.
+const DEMO_STUDENT_PASSWORD = "password123";
 
 // ── env ──
 const DATABASE_URL = process.env.DATABASE_URL!;
@@ -456,6 +460,23 @@ async function ensureParentAuthUser(): Promise<string> {
   return existing.id;
 }
 
+/** Create (or find) a demo student login. Returns the auth user id. */
+async function ensureStudentAuthUser(username: string, name: string): Promise<string> {
+  const email = studentUsernameToEmail(username);
+  const created = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password: DEMO_STUDENT_PASSWORD,
+    email_confirm: true,
+    user_metadata: { role: "student", name, username },
+  });
+  if (created.data.user) return created.data.user.id;
+
+  const list = await supabaseAdmin.auth.admin.listUsers();
+  const existing = list.data.users.find((u) => u.email === email);
+  if (!existing) throw new Error(`Could not create or find demo student ${username}: ${created.error?.message}`);
+  return existing.id;
+}
+
 async function main() {
   console.log("Seeding Passionfruit demo data…");
   if (embeddingsDisabled) {
@@ -502,6 +523,11 @@ async function main() {
       })
       .returning();
     const studentId = student!.id;
+
+    // Give the student their own demo login (username = first name).
+    const studentUsername = p.name.toLowerCase();
+    const studentAuthId = await ensureStudentAuthUser(studentUsername, p.name);
+    await db.update(students).set({ authUserId: studentAuthId }).where(eq(students.id, studentId));
 
     for (const i of p.interests) {
       await db.insert(interests).values({
@@ -623,11 +649,14 @@ async function main() {
     console.log(`  ✓ ${p.name} (age ${p.age}) — graph seeded`);
   }
 
-  console.log("\nDone. Log in with:");
+  console.log("\nDone. Log in as PARENT with:");
   console.log(`  email:    ${DEMO_PARENT.email}`);
   console.log(`  password: ${DEMO_PARENT.password}`);
-  console.log("\nThese students already have a learner graph, so you can jump straight to");
-  console.log("'See project paths' for any of them.");
+  console.log("\nOr log in as a STUDENT (username / password):");
+  for (const p of PROFILES) {
+    console.log(`  ${p.name.toLowerCase().padEnd(8)} / ${DEMO_STUDENT_PASSWORD}`);
+  }
+  console.log("\nStudents already have a learner graph, so you can jump straight in.");
 
   await sql.end();
 }
