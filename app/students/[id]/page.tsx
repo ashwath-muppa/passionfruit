@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireStudentView } from "@/lib/auth/parent";
 import {
   getActiveProject,
@@ -42,7 +43,10 @@ export default async function StudentDashboard({
 }) {
   const { id } = await params;
   const { student, actor } = await requireStudentView(id);
-  const isStudentView = actor.role === "student";
+  // This is the PARENT oversight view. A student belongs on their own cockpit.
+  if (actor.role === "student") redirect(`/students/${id}/home`);
+  // Students are redirected above, so this view is always the parent's.
+  const isStudentView = false;
 
   const [graph, project, skills, opportunities, target, engagement, mentors, checkpoints, usage] =
     await Promise.all([

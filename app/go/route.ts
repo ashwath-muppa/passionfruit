@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     actor.role === "parent"
       ? "/dashboard"
       : actor.role === "student"
-        ? `/students/${actor.student.id}`
+        ? `/students/${actor.student.id}/home` // the student's own cockpit
         : "/login";
   return NextResponse.redirect(new URL(dest, req.url));
 }
