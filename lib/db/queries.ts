@@ -17,6 +17,7 @@ import {
   projects,
   projectTargets,
   resources,
+  safetyFlags,
   skills,
   strengths,
   students,
@@ -190,6 +191,30 @@ export async function getCheckpointDetail(
     .where(eq(checkpointDetails.milestoneId, milestoneId))
     .limit(1);
   return row ?? null;
+}
+
+export interface OpenSafetyFlag {
+  id: string;
+  severity: "low" | "medium" | "high";
+  categories: string[];
+  content: string;
+  createdAt: Date;
+}
+
+/** Open safety flags for a student (the escalation queue) — parent peace-of-mind. */
+export async function getOpenSafetyFlags(studentId: string): Promise<OpenSafetyFlag[]> {
+  return db
+    .select({
+      id: safetyFlags.id,
+      severity: safetyFlags.severity,
+      categories: safetyFlags.categories,
+      content: safetyFlags.content,
+      createdAt: safetyFlags.createdAt,
+    })
+    .from(safetyFlags)
+    .where(and(eq(safetyFlags.studentId, studentId), eq(safetyFlags.status, "open")))
+    .orderBy(desc(safetyFlags.createdAt))
+    .limit(20);
 }
 
 /**

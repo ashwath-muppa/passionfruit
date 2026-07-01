@@ -105,6 +105,22 @@ export async function getOwnedStudent(studentId: string): Promise<Student | null
   return null;
 }
 
+/**
+ * The student, only if the current actor is the PARENT who owns it (never the
+ * student themselves). Use to gate parent-only actions (steering, mentor
+ * booking, digests, safety). Returns null for a student session or a guest.
+ */
+export async function getParentOwnedStudent(studentId: string): Promise<Student | null> {
+  const parent = await getParent(); // null for student auth users
+  if (!parent) return null;
+  const [student] = await db
+    .select()
+    .from(students)
+    .where(and(eq(students.id, studentId), eq(students.parentId, parent.id)))
+    .limit(1);
+  return student ?? null;
+}
+
 /** For student-facing pages: resolve the student + actor, or redirect to login. */
 export async function requireStudentView(
   studentId: string,

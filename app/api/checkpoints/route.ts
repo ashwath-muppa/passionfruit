@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { guard, jsonError, resolveOwnedStudent } from "@/lib/api/helpers";
+import { guard, jsonError, resolveParentOwnedStudent } from "@/lib/api/helpers";
 import {
   cancelCheckpoint,
   checkpointUsage,
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const parsed = bodySchema.safeParse(await req.json());
     if (!parsed.success) return jsonError(400, parsed.error.message);
 
-    const owned = await resolveOwnedStudent(parsed.data.studentId);
+    const owned = await resolveParentOwnedStudent(parsed.data.studentId);
     if (!owned.ok) return owned.response;
     const data = parsed.data;
 

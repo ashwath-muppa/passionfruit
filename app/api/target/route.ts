@@ -7,7 +7,7 @@ import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { projects, projectTargets, students } from "@/lib/db/schema";
-import { guard, jsonError, resolveOwnedStudent } from "@/lib/api/helpers";
+import { guard, jsonError, resolveParentOwnedStudent } from "@/lib/api/helpers";
 import { asEndGoalPref, suggestTargetsForStudent } from "@/lib/deliverables/suggest";
 
 const bodySchema = z.discriminatedUnion("action", [
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const parsed = bodySchema.safeParse(await req.json());
     if (!parsed.success) return jsonError(400, parsed.error.message);
 
-    const owned = await resolveOwnedStudent(parsed.data.studentId);
+    const owned = await resolveParentOwnedStudent(parsed.data.studentId);
     if (!owned.ok) return owned.response;
     const data = parsed.data;
 

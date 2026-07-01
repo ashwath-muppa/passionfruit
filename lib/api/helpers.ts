@@ -3,7 +3,7 @@
 
 import "server-only";
 import { NextResponse } from "next/server";
-import { getOwnedStudent } from "@/lib/auth/parent";
+import { getOwnedStudent, getParentOwnedStudent } from "@/lib/auth/parent";
 import { SafetyBlockedError } from "@/lib/ai/tasks";
 import type { Student } from "@/lib/db/schema";
 
@@ -23,6 +23,21 @@ export async function resolveOwnedStudent(
   if (!student) {
     // 404 (not 403) so we don't leak which ids exist.
     return { ok: false, response: jsonError(404, "Student not found") };
+  }
+  return { ok: true, student };
+}
+
+/**
+ * Like resolveOwnedStudent, but PARENT-ONLY: a student session (even for their
+ * own record) is rejected. For parent-steering actions students shouldn't take.
+ */
+export async function resolveParentOwnedStudent(
+  studentId: string | undefined,
+): Promise<{ ok: true; student: Student } | { ok: false; response: NextResponse }> {
+  if (!studentId) return { ok: false, response: jsonError(400, "studentId is required") };
+  const student = await getParentOwnedStudent(studentId);
+  if (!student) {
+    return { ok: false, response: jsonError(403, "This action is only available to a parent.") };
   }
   return { ok: true, student };
 }

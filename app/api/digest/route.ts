@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { guard, jsonError, resolveOwnedStudent } from "@/lib/api/helpers";
+import { guard, jsonError, resolveParentOwnedStudent } from "@/lib/api/helpers";
 import { requireParent } from "@/lib/auth/parent";
 import { buildMonthly, buildWeeklyNudge } from "@/lib/digest/build";
 import { sendEmail } from "@/lib/email/send";
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     if (!parsed.success) return jsonError(400, parsed.error.message);
     const { studentId, kind } = parsed.data;
 
-    const owned = await resolveOwnedStudent(studentId);
+    const owned = await resolveParentOwnedStudent(studentId);
     if (!owned.ok) return owned.response;
 
     const parent = await requireParent();
