@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
-import { getLearnerGraphSnapshot } from "@/lib/db/queries";
+import { getLearnerGraphSnapshot, getLatestProjectPaths } from "@/lib/db/queries";
 import { PathPicker } from "@/components/PathPicker";
-import { PhoneFrame } from "@/components/PhoneFrame";
-import { StudentAvatar } from "@/components/StudentAvatar";
+import { AppHeader } from "@/components/AppHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -14,31 +13,31 @@ export default async function PathsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireParent();
+  const parent = await requireParent();
   const student = await getOwnedStudent(id);
   if (!student) notFound();
 
   const graph = await getLearnerGraphSnapshot(id);
   const spark = graph?.interests[0]?.label.toLowerCase() ?? null;
+  // Serve the stored snapshot so a revisit renders instantly with no AI call.
+  const initialPaths = await getLatestProjectPaths(id);
 
   return (
-    <main className="mx-auto min-h-screen max-w-[392px] px-4 py-8">
-      <div className="mb-4 px-1">
+    <div className="min-h-screen">
+      <AppHeader parentEmail={parent.email} />
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <Link href={`/students/${id}`} className="text-[13px] font-semibold text-passionfruit-muted">
           ← {student.name}
         </Link>
-      </div>
-      <PhoneFrame>
-        {/* brand row */}
-        <div className="flex items-center justify-between px-[22px] pb-1 pt-1.5">
-          <div className="flex items-center gap-2">
-            <div className="h-[22px] w-[22px] rounded-[7px] bg-passionfruit-accent" />
-            <span className="font-display text-[18px] font-semibold text-passionfruit-ink">Passionfruit</span>
-          </div>
-          <StudentAvatar name={student.name} size={34} />
+        <div className="mt-4">
+          <PathPicker
+            studentId={student.id}
+            studentName={student.name}
+            spark={spark}
+            initialPaths={initialPaths}
+          />
         </div>
-        <PathPicker studentId={student.id} studentName={student.name} spark={spark} />
-      </PhoneFrame>
-    </main>
+      </main>
+    </div>
   );
 }

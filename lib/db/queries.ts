@@ -13,6 +13,7 @@ import {
   milestones,
   observations,
   opportunities,
+  projectPaths,
   projects,
   projectTargets,
   resources,
@@ -20,6 +21,7 @@ import {
   strengths,
   students,
 } from "./schema";
+import type { ProjectPathCandidate } from "@/lib/types";
 import type {
   CheckpointDetailRow,
   Constraint,
@@ -188,4 +190,21 @@ export async function getCheckpointDetail(
     .where(eq(checkpointDetails.milestoneId, milestoneId))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * The most recent stored project-path snapshot for a student, or null. Paths
+ * are generated once and persisted; this read serves them back so we never
+ * regenerate on a revisit (only an explicit "regenerate" does).
+ */
+export async function getLatestProjectPaths(
+  studentId: string,
+): Promise<ProjectPathCandidate[] | null> {
+  const [row] = await db
+    .select({ candidates: projectPaths.candidates })
+    .from(projectPaths)
+    .where(eq(projectPaths.studentId, studentId))
+    .orderBy(desc(projectPaths.generatedAt))
+    .limit(1);
+  return row?.candidates ?? null;
 }
