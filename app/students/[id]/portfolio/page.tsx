@@ -3,8 +3,7 @@
 // Route stays /portfolio. Parent-owned; share toggles live here.
 
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
+import { requireStudentView } from "@/lib/auth/parent";
 import { getActiveProject } from "@/lib/db/queries";
 import { getStudentArtifacts } from "@/lib/artifacts/store";
 import { AppHeader } from "@/components/AppHeader";
@@ -19,9 +18,7 @@ export default async function PortfolioPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const parent = await requireParent();
-  const student = await getOwnedStudent(id);
-  if (!student) notFound();
+  const { student, actor } = await requireStudentView(id);
 
   const [artifacts, project] = await Promise.all([
     getStudentArtifacts(id),
@@ -33,7 +30,7 @@ export default async function PortfolioPage({
 
   return (
     <div className="min-h-screen">
-      <AppHeader parentEmail={parent.email} />
+      <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <Link
           href={`/students/${id}`}

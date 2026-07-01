@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
+import { requireStudentView } from "@/lib/auth/parent";
 import { AppHeader } from "@/components/AppHeader";
 import { IntakeChat } from "@/components/IntakeChat";
 
@@ -12,13 +11,11 @@ export default async function IntakePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const parent = await requireParent();
-  const student = await getOwnedStudent(id);
-  if (!student) notFound();
+  const { student, actor } = await requireStudentView(id);
 
   return (
     <div className="min-h-screen">
-      <AppHeader parentEmail={parent.email} />
+      <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
       <main className="mx-auto max-w-2xl px-6 py-8">
         <Link href={`/students/${id}`} className="text-[13px] font-semibold text-passionfruit-muted">← {student.name}</Link>
         <h1 className="mt-2 font-display text-[26px] font-semibold text-passionfruit-ink">Intake with {student.name}</h1>

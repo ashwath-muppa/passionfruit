@@ -8,6 +8,8 @@ export function StudentForm() {
   const [name, setName] = useState("");
   const [age, setAge] = useState<number | "">("");
   const [grade, setGrade] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,6 +19,14 @@ export function StudentForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (username.trim().length < 3) {
+      setError("Choose a username that's at least 3 characters long.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Choose a password that's at least 6 characters long.");
+      return;
+    }
     if (under13 && !consent) {
       setError("Parental consent is required for children under 13 (COPPA).");
       return;
@@ -31,6 +41,8 @@ export function StudentForm() {
           age: typeof age === "number" ? age : undefined,
           grade: grade || undefined,
           parentalConsent: consent,
+          username: username.trim(),
+          password,
         }),
       });
       const data = await res.json();
@@ -65,6 +77,48 @@ export function StudentForm() {
         <div>
           <label className="label" htmlFor="grade">Grade</label>
           <input id="grade" className="input" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="e.g. 7" />
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-passionfruit-sunk p-4 space-y-3">
+        <div>
+          <h3 className="text-[13px] font-semibold text-passionfruit-accentInk">Student login</h3>
+          <p className="mt-0.5 text-[12px] text-passionfruit-body">
+            This is the login your child will use to sign in to Passionfruit.
+          </p>
+        </div>
+        <div>
+          <label className="label" htmlFor="username">Student username</label>
+          <input
+            id="username"
+            className="input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="off"
+            placeholder="e.g. alex.g"
+            minLength={3}
+            maxLength={30}
+            required
+          />
+          <p className="mt-1 text-[12px] text-passionfruit-body">
+            3–30 characters. Letters, numbers, and . _ - only.
+          </p>
+        </div>
+        <div>
+          <label className="label" htmlFor="password">Student password</label>
+          <input
+            id="password"
+            type="password"
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={6}
+            required
+          />
+          <p className="mt-1 text-[12px] text-passionfruit-body">
+            At least 6 characters. Share it with your child so they can sign in.
+          </p>
         </div>
       </div>
 

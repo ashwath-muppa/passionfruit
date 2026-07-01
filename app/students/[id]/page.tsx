@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
+import { requireStudentView } from "@/lib/auth/parent";
 import {
   getActiveProject,
   getActiveTarget,
@@ -42,9 +41,8 @@ export default async function StudentDashboard({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const parent = await requireParent();
-  const student = await getOwnedStudent(id);
-  if (!student) notFound();
+  const { student, actor } = await requireStudentView(id);
+  const isStudentView = actor.role === "student";
 
   const [graph, project, skills, opportunities, target, engagement, mentors, checkpoints, usage] =
     await Promise.all([
@@ -76,11 +74,13 @@ export default async function StudentDashboard({
 
   return (
     <div className="min-h-screen">
-      <AppHeader parentEmail={parent.email} />
+      <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <Link href="/dashboard" className="text-[13px] font-semibold text-passionfruit-muted">
-          ← All students
-        </Link>
+        {!isStudentView && (
+          <Link href="/dashboard" className="text-[13px] font-semibold text-passionfruit-muted">
+            ← All students
+          </Link>
+        )}
 
         {/* Dashboard sheet */}
         <div className="mt-3 rounded-[24px] border border-passionfruit-line bg-passionfruit-paper p-5 shadow-frame sm:p-[22px]">
@@ -90,21 +90,31 @@ export default async function StudentDashboard({
               <span className="h-6 w-6 rounded-[7px] bg-passionfruit-accent" />
               <span className="font-display text-[20px] font-semibold text-passionfruit-ink">Passionfruit</span>
               <span className="ml-1 border-l border-passionfruit-line pl-2.5 text-[12px] text-passionfruit-faint">
-                Parent view
+                {isStudentView ? "Your space" : "Parent view"}
               </span>
             </div>
             <div className="flex items-center gap-2.5">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 rounded-full border border-passionfruit-line bg-passionfruit-card py-1.5 pl-1.5 pr-3.5"
-              >
-                <StudentAvatar name={student.name} size={26} />
-                <span className="text-[13px] font-bold text-passionfruit-ink">
-                  {firstName}
-                  {student.grade ? ` · Grade ${student.grade}` : ""}
-                </span>
-                <span className="text-passionfruit-faint">▾</span>
-              </Link>
+              {isStudentView ? (
+                <div className="flex items-center gap-2 rounded-full border border-passionfruit-line bg-passionfruit-card py-1.5 pl-1.5 pr-3.5">
+                  <StudentAvatar name={student.name} size={26} />
+                  <span className="text-[13px] font-bold text-passionfruit-ink">
+                    {firstName}
+                    {student.grade ? ` · Grade ${student.grade}` : ""}
+                  </span>
+                </div>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 rounded-full border border-passionfruit-line bg-passionfruit-card py-1.5 pl-1.5 pr-3.5"
+                >
+                  <StudentAvatar name={student.name} size={26} />
+                  <span className="text-[13px] font-bold text-passionfruit-ink">
+                    {firstName}
+                    {student.grade ? ` · Grade ${student.grade}` : ""}
+                  </span>
+                  <span className="text-passionfruit-faint">▾</span>
+                </Link>
+              )}
               <span className="hidden text-[12px] text-passionfruit-faint sm:inline">{period}</span>
             </div>
           </div>

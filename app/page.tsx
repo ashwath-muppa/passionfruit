@@ -15,12 +15,15 @@ export default function Home() {
         We turn a kid&apos;s interests into real, portfolio-worthy projects — and keep a multi-year
         memory of how they grow. Parent-held accounts, safety-checked from day one.
       </p>
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap gap-3">
         <Link href="/signup" className="btn-primary">
           Create a parent account
         </Link>
         <Link href="/login" className="btn-ghost">
-          Log in
+          Log in as parent
+        </Link>
+        <Link href="/login/student" className="btn-ghost">
+          Log in as student
         </Link>
       </div>
       <p className="mt-12 text-[12px] text-passionfruit-faint">

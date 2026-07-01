@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
+import { requireStudentView } from "@/lib/auth/parent";
 import { AppHeader } from "@/components/AppHeader";
 import { getCheckpointPrep } from "@/lib/mentors/checkpoints";
 
@@ -26,9 +26,7 @@ export default async function CheckpointPrepPage({
   params: Promise<{ id: string; cid: string }>;
 }) {
   const { id, cid } = await params;
-  const parent = await requireParent();
-  const student = await getOwnedStudent(id);
-  if (!student) notFound();
+  const { student, actor } = await requireStudentView(id);
 
   const prep = await getCheckpointPrep(cid);
   // notFound if the checkpoint doesn't exist or belongs to a different student
@@ -55,7 +53,7 @@ export default async function CheckpointPrepPage({
 
   return (
     <div className="min-h-screen">
-      <AppHeader parentEmail={parent.email} />
+      <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <Link href={`/students/${id}`} className="text-[13px] font-semibold text-passionfruit-muted">
           ← {firstName}

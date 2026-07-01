@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
+import { redirect } from "next/navigation";
+import { requireStudentView } from "@/lib/auth/parent";
 import { getActiveProject, getResourcesForProject } from "@/lib/db/queries";
 import type { Resource } from "@/lib/db/schema";
 import { PATH_TYPE_LABELS } from "@/lib/types";
@@ -24,9 +24,7 @@ export default async function WeeklyPlanPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireParent();
-  const student = await getOwnedStudent(id);
-  if (!student) notFound();
+  const { student } = await requireStudentView(id);
 
   const project = await getActiveProject(id);
   if (!project) redirect(`/students/${id}`);

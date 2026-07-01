@@ -1,9 +1,10 @@
 // Deadline & Calendar Engine (#4) — .ics export. GET serves the student's synced
 // opportunities as an all-day calendar feed so deadlines land in the family's
-// real calendar (Apple/Google/Outlook). Ownership-gated via requireParent +
-// getOwnedStudent; force-dynamic since it reflects live opportunity rows.
+// real calendar (Apple/Google/Outlook). Ownership-gated via getOwnedStudent so
+// the student OR their owning parent may fetch it; force-dynamic since it
+// reflects live opportunity rows.
 
-import { requireParent, getOwnedStudent } from "@/lib/auth/parent";
+import { getOwnedStudent } from "@/lib/auth/parent";
 import { getOpportunities } from "@/lib/db/queries";
 import { toIcs } from "@/lib/calendar/deadlines";
 
@@ -13,7 +14,6 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  await requireParent();
   const { id } = await params;
 
   const student = await getOwnedStudent(id);
