@@ -3,6 +3,9 @@ import { eq, sql } from "drizzle-orm";
 import { requireParent, listStudents } from "@/lib/auth/parent";
 import { db } from "@/lib/db/client";
 import { interests, projects } from "@/lib/db/schema";
+import { getActiveProject, getOpenSafetyFlags } from "@/lib/db/queries";
+import { getEngagement } from "@/lib/engagement";
+import { projectProgress } from "@/lib/ui";
 import { AppHeader } from "@/components/AppHeader";
 import { StudentAvatar } from "@/components/StudentAvatar";
 
@@ -28,10 +31,39 @@ const TONE: Record<"accent" | "gold" | "muted", string> = {
   muted: "bg-passionfruit-sunk text-passionfruit-muted",
 };
 
+interface Glance {
+  status: Awaited<ReturnType<typeof studentStatus>>;
+  projectTitle: string | null;
+  percent: number;
+  paceLine: string;
+  weekLabel: string;
+  streak: number;
+  openFlags: number;
+}
+
+async function studentGlance(studentId: string): Promise<Glance> {
+  const [status, active, engagement, flags] = await Promise.all([
+    studentStatus(studentId),
+    getActiveProject(studentId),
+    getEngagement(studentId),
+    getOpenSafetyFlags(studentId),
+  ]);
+  const prog = active ? projectProgress(active.milestones) : null;
+  return {
+    status,
+    projectTitle: active?.project.title ?? null,
+    percent: prog?.percent ?? 0,
+    paceLine: prog?.paceLine ?? "",
+    weekLabel: prog?.weekLabel ?? "",
+    streak: engagement.streak.current,
+    openFlags: flags.length,
+  };
+}
+
 export default async function DashboardPage() {
   const parent = await requireParent();
   const kids = await listStudents();
-  const statuses = await Promise.all(kids.map((k) => studentStatus(k.id)));
+  const glances = await Promise.all(kids.map((k) => studentGlance(k.id)));
 
   return (
     <div className="min-h-screen">
@@ -59,16 +91,18 @@ export default async function DashboardPage() {
         ) : (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {kids.map((kid, i) => {
-              const status = statuses[i]!;
+              const g = glances[i]!;
+              const hasProject = g.projectTitle !== null;
               return (
                 <Link
                   key={kid.id}
-                  href={`/students/${kid.id}${status.href}`}
-                  className="card-sheet transition hover:-translate-y-0.5 hover:shadow-elev"
+                  href={`/students/${kid.id}${g.status.href}`}
+                  className="card-sheet flex flex-col transition hover:-translate-y-0.5 hover:shadow-elev"
                 >
+                  {/* Header: avatar, name, age/grade, safety indicator */}
                   <div className="flex items-start gap-3">
                     <StudentAvatar name={kid.name} size={42} />
-                    <div className="flex-1">
+                    <div className="min-w-0 flex-1">
                       <h2 className="font-display text-[18px] font-semibold text-passionfruit-ink">
                         {kid.name}
                       </h2>
@@ -79,12 +113,55 @@ export default async function DashboardPage() {
                         {kid.under13 && " · Under 13"}
                       </p>
                     </div>
+                    {g.openFlags > 0 ? (
+                      <span className="inline-flex flex-none items-center gap-1 rounded-full bg-[#FBEFD6] px-2.5 py-1 text-[11px] font-bold text-[#9A6B12]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-passionfruit-gold" />
+                        {g.openFlags} flagged
+                      </span>
+                    ) : (
+                      <span className="inline-flex flex-none items-center gap-1.5 rounded-full bg-passionfruit-sunk px-2.5 py-1 text-[11px] font-semibold text-passionfruit-muted">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#3E9A62]" />
+                        All clear
+                      </span>
+                    )}
                   </div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className={`pill ${TONE[status.tone]}`}>{status.label}</span>
-                    <span className="text-[13px] font-semibold text-passionfruit-accentInk">
-                      {status.cta} →
-                    </span>
+
+                  {/* Momentum: project + progress, or the intake/paths state */}
+                  <div className="mt-4 flex-1">
+                    {hasProject ? (
+                      <>
+                        <p className="truncate text-[13px] font-semibold text-passionfruit-ink">
+                          {g.projectTitle}
+                        </p>
+                        <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-passionfruit-sunk">
+                          <div
+                            className="h-full rounded-full bg-passionfruit-accent transition-[width]"
+                            style={{ width: `${g.percent}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-passionfruit-faint">
+                          <span>{g.weekLabel}</span>
+                          <span className="font-semibold text-passionfruit-accentInk">{g.percent}%</span>
+                        </div>
+                        {g.paceLine && (
+                          <p className="mt-1 text-[12px] text-passionfruit-muted">{g.paceLine}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="rounded-2xl bg-passionfruit-sunk/60 px-3.5 py-3 text-[13px] text-passionfruit-muted">
+                        {g.status.label}
+                      </div>
+                    )}
+
+                    {g.streak > 0 && (
+                      <span className="pill-accent mt-3 gap-1">🔥 {g.streak}-week streak</span>
+                    )}
+                  </div>
+
+                  {/* Footer: status pill + view affordance */}
+                  <div className="mt-4 flex items-center justify-between border-t border-passionfruit-line pt-3">
+                    <span className={`pill ${TONE[g.status.tone]}`}>{g.status.label}</span>
+                    <span className="text-[13px] font-semibold text-passionfruit-accentInk">View →</span>
                   </div>
                 </Link>
               );

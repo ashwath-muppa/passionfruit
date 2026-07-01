@@ -5,6 +5,7 @@ import {
   getActiveProject,
   getActiveTarget,
   getLearnerGraphSnapshot,
+  getOpenSafetyFlags,
   getOpportunities,
   getSkills,
 } from "@/lib/db/queries";
@@ -21,6 +22,7 @@ import { SpikeLadder } from "@/components/SpikeLadder";
 import { StreakBadges } from "@/components/StreakBadges";
 import { DigestControl } from "@/components/DigestControl";
 import { CheckpointBooking } from "@/components/CheckpointBooking";
+import { SafetyPanel } from "@/components/SafetyPanel";
 import { StudentAvatar } from "@/components/StudentAvatar";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
@@ -45,21 +47,30 @@ export default async function StudentDashboard({
   const { student, actor } = await requireStudentView(id);
   // This is the PARENT oversight view. A student belongs on their own cockpit.
   if (actor.role === "student") redirect(`/students/${id}/home`);
-  // Students are redirected above, so this view is always the parent's.
-  const isStudentView = false;
 
-  const [graph, project, skills, opportunities, target, engagement, mentors, checkpoints, usage] =
-    await Promise.all([
-      getLearnerGraphSnapshot(id),
-      getActiveProject(id),
-      getSkills(id),
-      getOpportunities(id),
-      getActiveTarget(id),
-      getEngagement(id),
-      listMentors(),
-      getCheckpoints(id),
-      checkpointUsage(id),
-    ]);
+  const [
+    graph,
+    project,
+    skills,
+    opportunities,
+    target,
+    engagement,
+    mentors,
+    checkpoints,
+    usage,
+    safetyFlags,
+  ] = await Promise.all([
+    getLearnerGraphSnapshot(id),
+    getActiveProject(id),
+    getSkills(id),
+    getOpportunities(id),
+    getActiveTarget(id),
+    getEngagement(id),
+    listMentors(),
+    getCheckpoints(id),
+    checkpointUsage(id),
+    getOpenSafetyFlags(id),
+  ]);
 
   const firstName = student.name.split(" ")[0] ?? student.name;
   const hasGraph = !!graph && graph.interests.length > 0;
@@ -80,11 +91,9 @@ export default async function StudentDashboard({
     <div className="min-h-screen">
       <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        {!isStudentView && (
-          <Link href="/dashboard" className="text-[13px] font-semibold text-passionfruit-muted">
-            ← All students
-          </Link>
-        )}
+        <Link href="/dashboard" className="text-[13px] font-semibold text-passionfruit-muted">
+          ← All students
+        </Link>
 
         {/* Dashboard sheet */}
         <div className="mt-3 rounded-[24px] border border-passionfruit-line bg-passionfruit-paper p-5 shadow-frame sm:p-[22px]">
@@ -94,159 +103,146 @@ export default async function StudentDashboard({
               <span className="h-6 w-6 rounded-[7px] bg-passionfruit-accent" />
               <span className="font-display text-[20px] font-semibold text-passionfruit-ink">Passionfruit</span>
               <span className="ml-1 border-l border-passionfruit-line pl-2.5 text-[12px] text-passionfruit-faint">
-                {isStudentView ? "Your space" : "Parent view"}
+                Parent view
               </span>
             </div>
             <div className="flex items-center gap-2.5">
-              {isStudentView ? (
-                <div className="flex items-center gap-2 rounded-full border border-passionfruit-line bg-passionfruit-card py-1.5 pl-1.5 pr-3.5">
-                  <StudentAvatar name={student.name} size={26} />
-                  <span className="text-[13px] font-bold text-passionfruit-ink">
-                    {firstName}
-                    {student.grade ? ` · Grade ${student.grade}` : ""}
-                  </span>
-                </div>
-              ) : (
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-2 rounded-full border border-passionfruit-line bg-passionfruit-card py-1.5 pl-1.5 pr-3.5"
-                >
-                  <StudentAvatar name={student.name} size={26} />
-                  <span className="text-[13px] font-bold text-passionfruit-ink">
-                    {firstName}
-                    {student.grade ? ` · Grade ${student.grade}` : ""}
-                  </span>
-                  <span className="text-passionfruit-faint">▾</span>
-                </Link>
-              )}
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-full border border-passionfruit-line bg-passionfruit-card py-1.5 pl-1.5 pr-3.5"
+              >
+                <StudentAvatar name={student.name} size={26} />
+                <span className="text-[13px] font-bold text-passionfruit-ink">
+                  {firstName}
+                  {student.grade ? ` · Grade ${student.grade}` : ""}
+                </span>
+                <span className="text-passionfruit-faint">▾</span>
+              </Link>
               <span className="hidden text-[12px] text-passionfruit-faint sm:inline">{period}</span>
             </div>
           </div>
 
-          {/* body grid */}
-          <div className="grid gap-4 lg:grid-cols-[296px_1fr]">
-            {/* LEFT */}
-            <div className="flex flex-col gap-4">
-              <SkillsPlanner skills={skills} />
-              <ParentSummaryCard studentId={id} studentFirstName={firstName} />
-              <DigestControl studentId={id} studentName={firstName} />
-              {!hasGraph && (
-                <div className="card text-center">
-                  <p className="text-[13px] text-passionfruit-muted">
-                    Run the intake chat to build {firstName}&apos;s learner graph.
-                  </p>
-                  <Link href={`/students/${id}/intake`} className="btn-primary mt-3 text-xs">
-                    Start intake →
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT */}
-            <div className="flex flex-col gap-4">
-              {hasGraph ? (
-                <LearnerGraph
-                  studentName={student.name}
-                  interests={graph!.interests}
-                  skills={skills}
-                  projectTitle={project?.project.title ?? null}
-                />
-              ) : (
-                <div className="card flex min-h-[180px] items-center justify-center text-center">
-                  <p className="max-w-xs text-[13px] text-passionfruit-faint">
-                    {firstName}&apos;s learner graph — the living map of interests, skills, and
-                    projects — appears here once intake is done.
-                  </p>
-                </div>
-              )}
-
-              {ladder && (
-                <SpikeLadder ladder={ladder.ladder} currentRungIndex={ladder.currentRungIndex} />
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {project ? (
-                  <ProjectTimelineRail
-                    milestones={project.milestones}
-                    timelineHref={`/students/${id}/timeline`}
-                  />
-                ) : (
-                  <div className="card flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-display text-[15px] font-semibold text-passionfruit-ink">
-                        Project
-                      </h3>
-                      <p className="mt-1 text-[12px] text-passionfruit-muted">
-                        {hasGraph
-                          ? "The learner graph is ready — generate project paths to begin."
-                          : "Finish intake first to unlock project paths."}
-                      </p>
-                    </div>
-                    {hasGraph && (
-                      <div className="mt-3 flex flex-col gap-1.5">
-                        <Link href={`/students/${id}/paths`} className="btn-primary text-xs">
-                          See project paths →
-                        </Link>
-                        <Link
-                          href={`/students/${id}/builder`}
-                          className="text-center text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
-                        >
-                          Or try the spark quiz
-                        </Link>
-                      </div>
-                    )}
+          {/* ── GROWTH ── the learner graph hero + how it's compounding */}
+          <section>
+            <p className="eyebrow">Growth</p>
+            <div className="mt-2 grid gap-4 lg:grid-cols-[296px_1fr]">
+              <div className="flex flex-col gap-4">
+                <ParentSummaryCard studentId={id} studentFirstName={firstName} />
+                <SkillsPlanner skills={skills} />
+                {!hasGraph && (
+                  <div className="card text-center">
+                    <p className="text-[13px] text-passionfruit-muted">
+                      Run the intake chat to build {firstName}&apos;s learner graph.
+                    </p>
+                    <Link href={`/students/${id}/intake`} className="btn-primary mt-3 text-xs">
+                      Start intake →
+                    </Link>
                   </div>
                 )}
-                <UpNext opportunities={opportunities} />
               </div>
+              <div className="flex flex-col gap-4">
+                {hasGraph ? (
+                  <LearnerGraph
+                    studentName={student.name}
+                    interests={graph!.interests}
+                    skills={skills}
+                    projectTitle={project?.project.title ?? null}
+                  />
+                ) : (
+                  <div className="card flex min-h-[180px] items-center justify-center text-center">
+                    <p className="max-w-xs text-[13px] text-passionfruit-faint">
+                      {firstName}&apos;s learner graph — the living map of interests, skills, and
+                      projects — appears here once intake is done.
+                    </p>
+                  </div>
+                )}
+                {ladder && (
+                  <SpikeLadder ladder={ladder.ladder} currentRungIndex={ladder.currentRungIndex} />
+                )}
+                <StreakBadges engagement={engagement} />
+              </div>
+            </div>
+          </section>
 
-              <StreakBadges engagement={engagement} />
-
-              <CheckpointBooking
-                studentId={id}
-                studentName={firstName}
-                mentors={mentors}
-                checkpoints={checkpoints}
-                usage={usage}
-              />
-
-              <CalendarActions studentId={id} />
-
-              {project && (
-                <div className="flex flex-wrap items-center gap-2 px-1">
-                  <span className="pill-accent">{PATH_TYPE_LABELS[project.project.pathType]}</span>
-                  <span className="text-[13px] font-semibold text-passionfruit-ink">
-                    {project.project.title}
-                  </span>
-                  {prog && (
-                    <span className="text-[12px] text-passionfruit-faint">· {prog.weekLabel}</span>
+          {/* ── THE PROJECT ── the real thing being built, and what's next */}
+          <section className="mt-7">
+            <p className="eyebrow">The project</p>
+            <div className="mt-2 grid gap-4 sm:grid-cols-2">
+              {project ? (
+                <ProjectTimelineRail
+                  milestones={project.milestones}
+                  timelineHref={`/students/${id}/timeline`}
+                />
+              ) : (
+                <div className="card flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-display text-[15px] font-semibold text-passionfruit-ink">
+                      Project
+                    </h3>
+                    <p className="mt-1 text-[12px] text-passionfruit-muted">
+                      {hasGraph
+                        ? "The learner graph is ready — generate project paths to begin."
+                        : "Finish intake first to unlock project paths."}
+                    </p>
+                  </div>
+                  {hasGraph && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      <Link href={`/students/${id}/paths`} className="btn-primary text-xs">
+                        See project paths →
+                      </Link>
+                      <Link
+                        href={`/students/${id}/builder`}
+                        className="text-center text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
+                      >
+                        Or try the spark quiz
+                      </Link>
+                    </div>
                   )}
-                  <Link
-                    href={`/students/${id}/plan`}
-                    className="ml-auto text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
-                  >
-                    Open weekly plan →
-                  </Link>
                 </div>
               )}
+              <UpNext opportunities={opportunities} />
+            </div>
 
-              {/* Real Artifact Pipeline (#5): the wall of finished work to see + share. */}
-              <div className="flex flex-wrap items-center gap-2 px-1">
-                <span className="pill">Running Resume</span>
-                <span className="text-[13px] text-passionfruit-muted">
-                  {firstName}&apos;s real, finished work
+            {project && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 px-1">
+                <span className="pill-accent">{PATH_TYPE_LABELS[project.project.pathType]}</span>
+                <span className="text-[13px] font-semibold text-passionfruit-ink">
+                  {project.project.title}
                 </span>
+                {prog && (
+                  <span className="text-[12px] text-passionfruit-faint">· {prog.weekLabel}</span>
+                )}
                 <Link
-                  href={`/students/${id}/portfolio`}
+                  href={`/students/${id}/plan`}
                   className="ml-auto text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
                 >
-                  Open running resume →
+                  Open weekly plan →
                 </Link>
               </div>
+            )}
 
-              {/* Parent north-star: the family steers the end-goal; Sage maps the
-                  route from the student's interests (#10). Shown once intake is done. */}
-              {hasGraph && (
+            {/* Real Artifact Pipeline (#5): the wall of finished work to see + share. */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
+              <span className="pill">Running Resume</span>
+              <span className="text-[13px] text-passionfruit-muted">
+                {firstName}&apos;s real, finished work
+              </span>
+              <Link
+                href={`/students/${id}/portfolio`}
+                className="ml-auto text-[12px] font-semibold text-passionfruit-accentInk hover:underline"
+              >
+                Open running resume →
+              </Link>
+            </div>
+          </section>
+
+          {/* ── STEERING ── the family sets the end-goal; Sage maps the route (#10) */}
+          {hasGraph && (
+            <section className="mt-7">
+              <p className="eyebrow">Steering</p>
+              <div className="mt-2 flex flex-col gap-4">
+                {/* Parent north-star: the family steers the end-goal; Sage maps the
+                    route from the student's interests. */}
                 <ParentTargetControl
                   studentId={id}
                   studentName={firstName}
@@ -261,25 +257,46 @@ export default async function StudentDashboard({
                       : null
                   }
                 />
-              )}
+                {/* Signature theme: fuse the student's interests into one ownable
+                    direction aimed at the family's chosen end-goal. */}
+                <IntersectionCard studentId={id} studentName={firstName} />
+              </div>
+            </section>
+          )}
 
-              {/* Signature theme (#10): fuse the student's interests into one
-                  ownable direction aimed at the family's chosen end-goal. */}
-              {hasGraph && <IntersectionCard studentId={id} studentName={firstName} />}
+          {/* ── SUPPORT ── the ways the family stays in the loop */}
+          <section className="mt-7">
+            <p className="eyebrow">Support</p>
+            <div className="mt-2 flex flex-col gap-4">
+              <CheckpointBooking
+                studentId={id}
+                studentName={firstName}
+                mentors={mentors}
+                checkpoints={checkpoints}
+                usage={usage}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <DigestControl studentId={id} studentName={firstName} />
+                <CalendarActions studentId={id} />
+              </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Consent / safety reassurance strip (DESIGN.md §9) */}
-        <p className="mt-3 px-1 text-[12px] text-passionfruit-faint">
-          {[student.age ? `Age ${student.age}` : null, student.grade ? `Grade ${student.grade}` : null]
-            .filter(Boolean)
-            .join(" · ")}
-          {student.under13 && " · Under 13"}
-          {" · "}
-          {student.parentalConsent ? "Parental consent on file" : "Awaiting parental consent"}
-          {" · every AI moment is safety-checked and logged."}
-        </p>
+          {/* ── SAFETY & CONSENT ── the calm oversight surface (DESIGN.md §9) */}
+          <section className="mt-7">
+            <p className="eyebrow">Safety &amp; consent</p>
+            <div className="mt-2">
+              <SafetyPanel
+                consent={{
+                  parentalConsent: student.parentalConsent,
+                  under13: student.under13,
+                  consentAt: student.consentAt,
+                }}
+                flags={safetyFlags}
+              />
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   );
