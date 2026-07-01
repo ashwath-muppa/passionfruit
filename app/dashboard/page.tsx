@@ -36,7 +36,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen">
       <AppHeader parentEmail={parent.email} />
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-[28px] font-semibold text-passionfruit-ink">Your students</h1>
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
         ) : (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {kids.map((kid, i) => {
               const status = statuses[i]!;
               return (

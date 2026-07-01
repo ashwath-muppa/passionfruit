@@ -54,7 +54,7 @@ export default async function CheckpointPrepPage({
   return (
     <div className="min-h-screen">
       <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Link href={`/students/${id}`} className="text-[13px] font-semibold text-passionfruit-muted">
           ← {firstName}
         </Link>
@@ -78,8 +78,11 @@ export default async function CheckpointPrepPage({
           </p>
         )}
 
-        {/* Mentor */}
-        <div className="card-sheet mt-5 p-4">
+        {/* Two-column layout: main prep content + rubric sidebar on lg */}
+        <div className="mt-5 grid gap-4 lg:grid-cols-3 lg:items-start">
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            {/* Mentor */}
+            <div className="card-sheet p-4">
           <div className="eyebrow">Mentor on this checkpoint</div>
           {mentor ? (
             <div className="mt-1.5">
@@ -103,8 +106,8 @@ export default async function CheckpointPrepPage({
           )}
         </div>
 
-        {/* The context a mentor needs */}
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {/* The context a mentor needs */}
+            <div className="grid gap-4 sm:grid-cols-2">
           {/* Learner graph snapshot */}
           <div className="card">
             <h2 className="font-display text-[15px] font-semibold text-passionfruit-ink">
@@ -214,31 +217,35 @@ export default async function CheckpointPrepPage({
                 </p>
               </div>
             )}
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* The rubric — the bar every checkpoint runs to */}
-        <div className="card-sheet mt-4 p-4">
-          <h2 className="font-display text-[16px] font-semibold text-passionfruit-ink">
-            A good checkpoint:
-          </h2>
-          <ul className="mt-2.5 flex flex-col gap-2">
-            {rubric.map((item, i) => (
-              <li key={i} className="flex items-start gap-2.5">
-                <span
-                  className="mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full bg-passionfruit-wash text-[11px] font-bold text-passionfruit-accentInk"
-                  aria-hidden
-                >
-                  ✓
-                </span>
-                <span className="text-[14px] leading-[1.5] text-passionfruit-body">{item}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 border-t border-passionfruit-line pt-3 text-[12px] leading-[1.5] text-passionfruit-faint">
-            Mentor time is capped on purpose. Your job is to raise the bar and unblock —
-            {firstName} does the work. That&apos;s what makes the win theirs.
-          </p>
+          {/* Sidebar: the rubric — the bar every checkpoint runs to */}
+          <aside className="lg:sticky lg:top-8">
+            <div className="card-sheet p-4">
+              <h2 className="font-display text-[16px] font-semibold text-passionfruit-ink">
+                A good checkpoint:
+              </h2>
+              <ul className="mt-2.5 flex flex-col gap-2">
+                {rubric.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span
+                      className="mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full bg-passionfruit-wash text-[11px] font-bold text-passionfruit-accentInk"
+                      aria-hidden
+                    >
+                      ✓
+                    </span>
+                    <span className="text-[14px] leading-[1.5] text-passionfruit-body">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 border-t border-passionfruit-line pt-3 text-[12px] leading-[1.5] text-passionfruit-faint">
+                Mentor time is capped on purpose. Your job is to raise the bar and unblock —
+                {firstName} does the work. That&apos;s what makes the win theirs.
+              </p>
+            </div>
+          </aside>
         </div>
       </main>
     </div>

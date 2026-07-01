@@ -5,7 +5,6 @@ import { getActiveProject, getResourcesForProject } from "@/lib/db/queries";
 import type { Resource } from "@/lib/db/schema";
 import { PATH_TYPE_LABELS } from "@/lib/types";
 import { projectProgress } from "@/lib/ui";
-import { PhoneFrame } from "@/components/PhoneFrame";
 import { ProgressRing } from "@/components/ProgressRing";
 import { MilestoneList } from "@/components/MilestoneList";
 import { WeeklyFocusCard } from "@/components/WeeklyFocusCard";
@@ -47,61 +46,63 @@ export default async function WeeklyPlanPage({
   ]);
 
   return (
-    <main className="mx-auto min-h-screen max-w-[392px] px-4 py-8">
-      <div className="mb-4 px-1">
+    <main className="mx-auto min-h-screen w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-4">
         <Link href={`/students/${id}`} className="text-[13px] font-semibold text-passionfruit-muted">
           ← {student.name}
         </Link>
       </div>
-      <PhoneFrame>
-        {/* project header */}
-        <div
-          className="mx-[18px] mt-2 rounded-3xl p-[18px] text-white"
-          style={{ background: "linear-gradient(150deg,#E8694A,#D4533A)" }}
-        >
-          <div className="text-[10px] font-bold uppercase tracking-[1px] opacity-85">
-            Your project · {PATH_TYPE_LABELS[project.project.pathType]}
+
+      {/* project header */}
+      <div
+        className="rounded-3xl p-6 text-white shadow-frame sm:p-7"
+        style={{ background: "linear-gradient(150deg,#E8694A,#D4533A)" }}
+      >
+        <div className="text-[10px] font-bold uppercase tracking-[1px] opacity-85">
+          Your project · {PATH_TYPE_LABELS[project.project.pathType]}
+        </div>
+        <div className="my-1.5 mb-3.5 font-display text-[24px] font-semibold leading-[1.15] sm:text-[28px]">
+          {project.project.title}
+        </div>
+        <div className="flex items-center gap-3.5">
+          <ProgressRing percent={prog.percent} />
+          <div>
+            <div className="text-[14px] font-bold">{prog.weekLabel}</div>
+            <div className="text-[12px] opacity-90">{prog.paceLine}</div>
           </div>
-          <div className="my-1.5 mb-3.5 font-display text-[22px] font-semibold leading-[1.15]">
-            {project.project.title}
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* MAIN column: weekly focus + milestones */}
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          <div>
+            <span className="eyebrow">This week with Sage</span>
+            <div className="mt-2">
+              <WeeklyFocusCard studentId={id} focus={focus} />
+            </div>
           </div>
-          <div className="flex items-center gap-3.5">
-            <ProgressRing percent={prog.percent} />
-            <div>
-              <div className="text-[14px] font-bold">{prog.weekLabel}</div>
-              <div className="text-[12px] opacity-90">{prog.paceLine}</div>
+
+          <div>
+            <span className="eyebrow">Your milestones</span>
+            <div className="mt-2">
+              <MilestoneList
+                initial={project.milestones}
+                resourcesByMilestone={resourcesByMilestone}
+              />
             </div>
           </div>
         </div>
 
-        {!activation.firstWin && activation.dayOfSprint <= 7 && (
-          <div className="px-5 pt-4">
+        {/* SIDE column: check-in + streak + activation */}
+        <aside className="flex flex-col gap-4 lg:col-span-1">
+          {!activation.firstWin && activation.dayOfSprint <= 7 && (
             <ActivationBanner state={activation} />
-          </div>
-        )}
-
-        <div className="px-5 pb-1.5 pt-4">
-          <span className="eyebrow">This week with Sage</span>
-        </div>
-        <div className="px-5 pb-2">
-          <WeeklyFocusCard studentId={id} focus={focus} />
-        </div>
-
-        <div className="px-5 pb-1.5 pt-4">
-          <span className="eyebrow">Your milestones</span>
-        </div>
-        <div className="px-5 pb-6">
-          <MilestoneList
-            initial={project.milestones}
-            resourcesByMilestone={resourcesByMilestone}
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 px-5 pb-6">
+          )}
           <CheckInButton studentId={id} />
           <StreakBadges engagement={engagement} />
-        </div>
-      </PhoneFrame>
+        </aside>
+      </div>
     </main>
   );
 }

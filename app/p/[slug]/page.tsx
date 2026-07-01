@@ -22,7 +22,7 @@ export default async function SharedArtifactPage({
   if (!artifact || !artifact.shared) notFound();
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-passionfruit-paper px-4 py-10">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-passionfruit-paper px-4 py-10">
       <main className="w-full max-w-2xl">
         {/* brand */}
         <div className="mb-6 flex items-center gap-2">

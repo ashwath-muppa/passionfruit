@@ -21,7 +21,7 @@ export default async function BuilderPage({
   return (
     <div className="min-h-screen">
       <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="h-[22px] w-[22px] rounded-[7px] bg-passionfruit-accent" />

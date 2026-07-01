@@ -31,7 +31,7 @@ export default async function PortfolioPage({
   return (
     <div className="min-h-screen">
       <AppHeader parentEmail={actor.role === "parent" ? actor.parent.email : student.name} />
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Link
           href={`/students/${id}`}
           className="text-[13px] font-semibold text-passionfruit-muted hover:text-passionfruit-ink"
